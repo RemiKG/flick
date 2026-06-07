@@ -1,0 +1,23 @@
+# deps
+node_modules/
+
+# env & secrets — NEVER commit a real key
+.env
+.env.local
+*.local
+
+# runtime persistence (the Toy Box store; regenerated / user data)
+store/flicks/
+store/media/
+store/*.db
+
+# os / editor junk
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+
+# build junk
+dist/
+tmp/
+.cache/
