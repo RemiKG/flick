@@ -1,0 +1,7 @@
+{
+  "name": "flick",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Flick — turn one child's drawing into a real ~50s animated cartoon, and keep every frame looking like they drew it. An autonomous Qwen Cloud showrunner (Track 2).",
+  "type": "module",
+  "engines": {
