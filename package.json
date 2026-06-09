@@ -5,3 +5,17 @@
   "description": "Flick — turn one child's drawing into a real ~50s animated cartoon, and keep every frame looking like they drew it. An autonomous Qwen Cloud showrunner (Track 2).",
   "type": "module",
   "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/server/index.js",
+    "dev": "node --watch src/server/index.js",
+    "seed": "node scripts/seed.js",
+    "mcp": "node src/server/mcp-stdio.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "license": "MIT"
+}
