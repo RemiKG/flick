@@ -62,3 +62,51 @@ export async function runFlick(flick, { onComplete } = {}) {
     emit({ stage: 'reader', status: 'running' });
     const sheet = await crew.read_drawing({ flick }, ctx);
     flick.drawingSheet = sheet;
+    flick.mode = sheet.engine === 'local' ? 'offline' : 'qwen';
+    emit({ stage: 'reader', status: 'done', drawingSheet: sheet });
+    await tick();
+
+    // 2 · Writer
+    emit({ stage: 'writer', status: 'running' });
+    const story = await crew.write_story({ flick, sheet }, ctx);
+    flick.story = story;
+    emit({ stage: 'writer', status: 'done', title: story.title, story });
+    await store.saveFlick(flick);
+
+    // 3 · Storyboarder
+    emit({ stage: 'board', status: 'running' });
+    const { shots, engine: sbEngine } = await crew.storyboard({ flick, sheet, story }, ctx);
+    flick.shots = shots.map((s) => ({ ...s, status: 'queued', fidelity: null, redraws: 0, night: sheet.night }));
+    flick.storyboardEngine = sbEngine;
+    emit({ stage: 'board', status: 'done', shots: flick.shots });
+    await tick();
+
+    // 4 · Set Painter
+    emit({ stage: 'painter', status: 'running' });
+    const set = await crew.paint_set({ flick, sheet }, ctx);
+    flick.media = { ...(flick.media || {}), setUrl: set.setUrl };
+    flick.setEngine = set.engine;
+    emit({ stage: 'painter', status: 'done', setUrl: set.setUrl, engine: set.engine });
+    await store.saveFlick(flick);
+
+    // 5+6 · Camera -> Critic (per shot) with targeted re-render
+    const cameraOut = [];
+    for (const shot of flick.shots) {
+      shot.status = 'rolling';
+      emit({ stage: 'camera', shot: shot.shot_no, status: 'rolling', model: flick.mode === 'qwen' ? crew.CREW[4].model : 'local preview' });
+
+      let cam = await crew.roll_camera({ flick, sheet, shot }, ctx);
+      let frameFile = null;
+      if (cam.videoUrl && !cam.preview) { frameFile = store.mediaPath(flick.id, `frame${shot.shot_no}.png`); await FF.extractFrame(store.mediaPath(flick.id, `shot${shot.shot_no}.mp4`), frameFile).catch(() => { frameFile = null; }); }
+
+      let verdict = await crew.check_fidelity({ flick, sheet, shot, frameFile }, ctx);
+      shot.fidelity = verdict.fidelity;
+      emit({ stage: 'critic', shot: shot.shot_no, fidelity: verdict.fidelity, smoothed: verdict.smoothed });
+      await tick();
+
+      // the un-fakeable loop: re-draw ONLY the shot that drifts (never the episode)
+      if (verdict.fidelity < threshold && flick.settings?.onDrift !== 'looser') {
+        const from = verdict.fidelity;
+        emit({ stage: 'redraw', shot: shot.shot_no, from, status: 'running' });
+        shot._redrawn = true; shot.redraws = (shot.redraws || 0) + 1;
+        cam = await crew.roll_camera({ flick, sheet, shot, subSeed: 100 }, ctx);
