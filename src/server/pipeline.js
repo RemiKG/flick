@@ -110,3 +110,51 @@ export async function runFlick(flick, { onComplete } = {}) {
         emit({ stage: 'redraw', shot: shot.shot_no, from, status: 'running' });
         shot._redrawn = true; shot.redraws = (shot.redraws || 0) + 1;
         cam = await crew.roll_camera({ flick, sheet, shot, subSeed: 100 }, ctx);
+        if (cam.videoUrl && !cam.preview) { frameFile = store.mediaPath(flick.id, `frame${shot.shot_no}.png`); await FF.extractFrame(store.mediaPath(flick.id, `shot${shot.shot_no}.mp4`), frameFile).catch(() => { frameFile = null; }); }
+        verdict = await crew.check_fidelity({ flick, sheet, shot, frameFile }, ctx);
+        shot.fidelity = verdict.fidelity;
+        emit({ stage: 'redraw', shot: shot.shot_no, from, to: verdict.fidelity, status: 'done' });
+      }
+
+      shot.engine = cam.engine; shot.preview = cam.preview; shot.status = 'done';
+      shot.held = verdict.held;
+      cameraOut.push({ shot: shot.shot_no, videoUrl: cam.videoUrl, preview: cam.preview, engine: cam.engine });
+      emit({ stage: 'camera', shot: shot.shot_no, status: 'done', fidelity: shot.fidelity });
+      await tick();
+    }
+    flick.camera = cameraOut;
+
+    // 7 · Voice
+    emit({ stage: 'voice', status: 'running' });
+    const voice = await crew.voice_line({ flick, story }, ctx);
+    flick.media = { ...(flick.media || {}), audioUrl: voice.audioUrl };
+    flick.voiceEngine = voice.engine;
+    emit({ stage: 'voice', status: 'done', engine: voice.engine, audioUrl: voice.audioUrl });
+    await store.saveFlick(flick);
+
+    // 8 · Cutter
+    emit({ stage: 'cutter', status: 'running' });
+    const cut = await crew.cut_episode({ flick, story, shots: flick.shots, camera: cameraOut, voice }, ctx);
+    flick.media = { ...(flick.media || {}), videoUrl: cut.videoUrl, thumbUrl: cut.thumbUrl };
+    flick.edl = cut.edl; flick.cutEngine = cut.engine;
+    emit({ stage: 'cutter', status: 'done', media: flick.media, engine: cut.engine });
+
+    // finalise
+    flick.ledger = { ...flick.ledger, ...computeLedger(flick), endToEndMs: Date.now() - t0 };
+    flick.status = 'ready';
+    await store.saveFlick(flick);
+    emit({ stage: 'ledger', ledger: flick.ledger });
+    emit({ stage: 'complete', flick });
+    onComplete?.(flick);
+    return flick;
+  } catch (err) {
+    flick.status = 'error'; flick.error = err.message;
+    await store.saveFlick(flick).catch(() => {});
+    emit({ stage: 'error', message: err.message });
+    throw err;
+  } finally {
+    buses.get(id)._running = false;
+    // let late subscribers still read the final flick; drop the bus after a grace period
+    setTimeout(() => buses.delete(id), 60000);
+  }
+}
