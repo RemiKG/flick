@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F6EFE0">
+  <title>Flick — flick it to life</title>
+  <meta name="description" content="Snap a child's drawing. A little projectionist gives it a story, films it as a real ~50s cartoon, and reads it aloud — and every frame still looks like they drew it.">
+  <meta property="og:title" content="Flick — flick it to life">
+  <meta property="og:description" content="Every kid draws a whole world. Nobody ever gets to watch it. Flick brings your child's own drawing to life — and it's still theirs.">
+  <meta property="og:image" content="/icons/social-preview.png">
+  <link rel="icon" href="/icons/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/icons/app-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/styles/tokens.css">
+  <link rel="stylesheet" href="/styles/components.css">
+  <link rel="stylesheet" href="/styles/app.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <div class="stage" id="stage" aria-hidden="true"></div>
+    <div id="topbar"></div>
+    <main id="view" class="z"><div class="boot">loading the fridge…</div></main>
+    <div id="scrim" class="scrim" hidden></div>
+  </div>
+
+  <!-- the crayon art engine (every mark placed by code, seed-locked, NOT diffusion) -->
+  <script src="/lib/crayon.js"></script>
+  <script src="/lib/scene.js"></script>
+  <script src="/lib/ui.js"></script>
+  <!-- the app -->
+  <script src="/app/api.js"></script>
+  <script src="/app/movie.js"></script>
+  <script src="/app/components.js"></script>
+  <script src="/app/screens/fridge.js"></script>
+  <script src="/app/screens/backstage.js"></script>
+  <script src="/app/screens/watch.js"></script>
+  <script src="/app/screens/toybox.js"></script>
+  <script src="/app/screens/booth.js"></script>
+  <script src="/app/screens/edges.js"></script>
+  <script src="/app/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+    }
+  </script>
+</body>
+</html>
