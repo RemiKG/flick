@@ -1,0 +1,56 @@
+/* Flick — design tokens (locked). Crayon-and-construction-paper scrapbook register.
+   ONE cream paper + ONE deep ink + ONE warm gold crayon accent. No red, ever (a low-fidelity
+   shot is "let me draw that again", never an alarm). Grey = the "not-yet-drawn / keep-it-looser"
+   state ONLY. The chrome stays calm cream; the CARTOONS explode into full crayon colour. */
+
+/* Fonts are bundled locally (../../fonts) so a render never silently falls back to serif.
+   Family names with a space are ALWAYS quoted (the "Baloo 2"-falls-back-to-serif gotcha). */
+@font-face{ font-family:'Fredoka'; src:url('../fonts/Fredoka.ttf') format('truetype');
+  font-weight:300 700; font-display:block; }
+@font-face{ font-family:'Nunito'; src:url('../fonts/Nunito.ttf') format('truetype');
+  font-weight:400 900; font-display:block; }
+@font-face{ font-family:'Patrick Hand'; src:url('../fonts/PatrickHand-Regular.ttf') format('truetype');
+  font-weight:400; font-display:block; }
+@font-face{ font-family:'Space Mono'; src:url('../fonts/SpaceMono-Regular.ttf') format('truetype');
+  font-weight:400; font-style:normal; font-display:block; }
+@font-face{ font-family:'Space Mono'; src:url('../fonts/SpaceMono-Bold.ttf') format('truetype');
+  font-weight:700; font-style:normal; font-display:block; }
+
+:root{
+  /* ---- Paper (the calm cream chrome — sugar / construction paper) ---- */
+  --paper:     #F6EFE0;   /* base surface — cream sugar-paper (the fridge page) */
+  --paper-hi:  #FCF8EE;   /* lifted / lit: cards, fields, the pinned drawing sheet */
+  --paper-lo:  #EEE5D1;   /* recessed: wells, insets */
+  --paper-2:   #E6DAC0;   /* deeper recess / folded edge */
+  --deckle:    #DBCDA9;   /* torn construction-paper rim */
+  --tape:      #F0E3C2;   /* washi / masking tape (drawn translucent) */
+
+  /* ---- Ink (ONE deep ink — a warm, waxy near-black dark crayon) ---- */
+  --ink:       #2C2620;   /* text + crayon line + the pressed-dark */
+  --ink-72:    #4E463B;
+  --ink-55:    #6D6455;   /* secondary text on cream */
+  --ink-40:    #928878;   /* muted label on cream */
+  --ink-26:    #B8AE99;
+  --ink-15:    #D6CDB6;
+  --line:      rgba(44,38,32,.15);   /* faint pencil hairline */
+  --line-2:    rgba(44,38,32,.26);
+  --line-3:    rgba(44,38,32,.40);
+
+  /* ---- Gold crayon (the ONE warm accent — the "flick", the star, the highlight) ---- */
+  --gold:      #E7A331;   /* the amber-gold wax crayon */
+  --gold-hi:   #F7C965;   /* the waxy catch-light */
+  --gold-core: #C67F1B;   /* over-pressed deeper gold (NOT red) */
+  --gold-ink:  #97610F;   /* gold text on cream (accessible) */
+  --gold-soft: #F2DFAC;   /* a soft gold wash / lit paper */
+  --gold-glow: rgba(231,163,49,.55);
+
+  /* ---- The ONE grey — the "not-yet-drawn / re-draw pending / keep-it-looser" state ONLY ---- */
+  --pencil:    #9C9585;   /* soft graphite — a shot not yet drawn / held looser */
+  --pencil-hi: #B6B0A1;
+  --pencil-lo: #726B5D;
+
+  /* ---- The FIDELITY ramp = how-much-it-still-looks-theirs (a secondary signature).
+         gold-bright (kept) -> graphite (drifted/looser). Never a red end. ---- */
+  --f-kept:    #E7A331;   /* faithful — glowing gold */
+  --f-good:    #D8A63F;
+  --f-mid:     #C1A868;   /* holding */
