@@ -1,0 +1,145 @@
+/* Flick — component atoms. The calm cream chrome that FRAMES the vivid crayon cartoons.
+   Depends on tokens.css. Screens compose these; art lives in crayon.js / scene.js. */
+
+/* ---------- app shell ---------- */
+.app{ position:relative; width:1440px; height:900px; overflow:hidden; background:var(--paper); }
+.stage{ position:absolute; inset:0; z-index:0; }        /* holds the sugar-paper svg */
+.z{ position:relative; z-index:2; }
+
+/* ---------- top bar ---------- */
+.topbar{ position:relative; z-index:3; display:flex; align-items:center; gap:22px;
+  height:70px; padding:0 30px; border-bottom:2px solid var(--line); }
+.topbar .brand{ display:flex; align-items:center; gap:10px; }
+.tabs{ display:flex; gap:6px; margin-left:14px; }
+.tab{ font-family:var(--ui); font-weight:800; font-size:14px; color:var(--ink-55);
+  padding:8px 15px; border-radius:var(--r-pill); letter-spacing:.01em; }
+.tab.on{ color:var(--ink); background:var(--paper-hi); box-shadow:var(--lift-sm); }
+.tab .g{ color:var(--gold-ink); }
+.spacer{ flex:1; }
+.readout{ display:flex; align-items:center; gap:16px; font-family:var(--mono); font-size:12px; color:var(--ink-55); }
+.readout b{ color:var(--ink); font-weight:700; }
+.readout .sep{ width:1px; height:18px; background:var(--line-2); }
+
+/* ---------- cards ---------- */
+.card{ position:relative; background:var(--paper-hi); border-radius:var(--r-lg);
+  box-shadow:var(--lift); border:2px solid var(--line); }
+.card.flat{ box-shadow:var(--lift-sm); }
+.card.well{ background:var(--paper-lo); box-shadow:none; border:2px dashed var(--line-2); }
+.card .ttl{ font-family:var(--display); font-weight:700; color:var(--ink); }
+.tapeC{ position:absolute; z-index:4; width:96px; height:34px; pointer-events:none; }
+
+/* ---------- buttons ---------- */
+.btn{ display:inline-flex; align-items:center; gap:9px; font-family:var(--ui); font-weight:800;
+  font-size:15px; padding:13px 22px; border-radius:var(--r-pill); border:2px solid transparent; cursor:pointer; }
+.btn.gold{ background:var(--gold); color:#3a2708; border-color:var(--gold-core);
+  box-shadow:0 3px 0 var(--gold-core), var(--glow-sm); }
+.btn.ink{ background:var(--ink); color:var(--paper-hi); box-shadow:0 3px 0 #1b1712; }
+.btn.ghost{ background:transparent; color:var(--ink); border-color:var(--line-3); }
+.btn.big{ font-size:19px; padding:17px 32px; }
+.btn .k{ font-size:19px; line-height:0; }
+
+/* ---------- chips ---------- */
+.chips{ display:flex; flex-wrap:wrap; gap:9px; }
+.chip{ font-family:var(--hand); font-size:16px; color:var(--ink-72); background:var(--paper-hi);
+  border:2px solid var(--line-2); border-radius:var(--r-pill); padding:6px 15px; }
+.chip .em{ color:var(--gold-ink); }
+.tagcap{ font-family:var(--ui); font-weight:800; font-size:10.5px; text-transform:uppercase;
+  letter-spacing:.12em; color:var(--gold-ink); background:var(--gold-soft);
+  border-radius:var(--r-pill); padding:4px 10px; display:inline-block; }
+.tagcap.pencil{ color:var(--pencil-lo); background:#EAE6DA; }
+
+/* ---------- the composer (drop a drawing) ---------- */
+.composer{ position:relative; background:var(--paper-lo); border:3px dashed var(--line-3);
+  border-radius:var(--r-lg); }
+.composer .hint{ font-family:var(--hand); font-size:20px; color:var(--ink-55); }
+
+/* ---------- the movie window (vivid content lives here) ---------- */
+.window{ position:relative; border-radius:var(--r-md); overflow:hidden;
+  border:3px solid var(--ink); box-shadow:var(--lift); background:var(--c-cloud); }
+.window .cap{ position:absolute; left:0; right:0; bottom:0; padding:12px 16px;
+  background:linear-gradient(0deg, rgba(28,22,16,.62), transparent); }
+.window .cap .line{ font-family:var(--hand); font-size:19px; color:#FCF6E7; }
+
+/* ---------- the fidelity meter (the honest little counter) ---------- */
+.meter{ font-family:var(--mono); }
+.meter .val{ font-size:30px; font-weight:700; color:var(--gold-ink); letter-spacing:-.03em; }
+.meter .val.redraw{ color:var(--pencil-lo); }
+.meter .track{ position:relative; height:12px; border-radius:var(--r-pill);
+  background:var(--paper-2); overflow:hidden; border:1.5px solid var(--line-2); }
+.meter .fill{ position:absolute; inset:0 auto 0 0; border-radius:var(--r-pill);
+  background:linear-gradient(90deg, var(--gold), var(--gold-hi)); }
+.meter .thr{ position:absolute; top:-4px; bottom:-4px; width:2.5px; background:var(--ink-55); }
+.meter .thr::after{ content:'keep ≥ .80'; position:absolute; top:-16px; left:-22px;
+  font-size:9px; color:var(--ink-55); white-space:nowrap; }
+
+/* ---------- crew rail (the pipeline made legible) ---------- */
+.crew{ display:flex; flex-direction:column; gap:9px; }
+.role{ display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:var(--r-md);
+  background:var(--paper-hi); border:2px solid var(--line); }
+.role.done{ border-color:var(--gold-soft); }
+.role.run{ border-color:var(--gold); box-shadow:var(--glow-sm); background:#FFFBF0; }
+.role.wait{ opacity:.6; }
+.role .ic{ width:34px; height:34px; flex:none; }
+.role .nm{ font-family:var(--display); font-weight:700; font-size:15px; color:var(--ink); }
+.role .fn{ font-family:var(--mono); font-size:11px; color:var(--gold-ink); }
+.role .st{ margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--ink-40); }
+.role .st.ok{ color:var(--gold-ink); }
+
+/* ---------- scene strip (the shots) ---------- */
+.strip{ display:flex; gap:12px; }
+.shot{ position:relative; width:150px; border-radius:var(--r-sm); overflow:hidden;
+  border:2.5px solid var(--ink); background:var(--c-cloud); }
+.shot.wait{ border-color:var(--pencil); filter:grayscale(.5) opacity(.8); }
+.shot.wait .ph{ background:var(--paper-2); }
+.shot .lab{ position:absolute; left:6px; top:6px; font-family:var(--mono); font-size:9.5px;
+  background:var(--paper-hi); border-radius:5px; padding:2px 6px; color:var(--ink-55); }
+.shot .seal{ position:absolute; right:5px; bottom:5px; }
+
+/* ---------- controls (power user) ---------- */
+.segment{ display:inline-flex; background:var(--paper-lo); border-radius:var(--r-pill); padding:4px; gap:3px; }
+.segment .opt{ font-family:var(--ui); font-weight:800; font-size:13px; color:var(--ink-55);
+  padding:8px 15px; border-radius:var(--r-pill); }
+.segment .opt.on{ background:var(--paper-hi); color:var(--ink); box-shadow:var(--lift-sm); }
+.slider{ position:relative; height:10px; border-radius:var(--r-pill); background:var(--paper-2); border:1.5px solid var(--line-2); }
+.slider .fill{ position:absolute; inset:0 auto 0 0; border-radius:var(--r-pill); background:var(--gold); }
+.slider .knob{ position:absolute; top:50%; width:22px; height:22px; border-radius:50%;
+  background:var(--paper-hi); border:3px solid var(--gold-core); transform:translate(-50%,-50%); box-shadow:var(--lift-sm); }
+.toggle{ width:50px; height:28px; border-radius:var(--r-pill); background:var(--paper-2); position:relative; border:2px solid var(--line-2); }
+.toggle.on{ background:var(--gold-soft); border-color:var(--gold); }
+.toggle .dot{ position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:var(--paper-hi); box-shadow:var(--lift-sm); }
+.toggle.on .dot{ left:auto; right:2px; background:var(--gold); }
+.row{ display:flex; align-items:center; gap:12px; }
+.row .lbl{ font-family:var(--ui); font-weight:700; font-size:14px; color:var(--ink-72); }
+.row .sub{ font-family:var(--ui); font-size:12.5px; color:var(--ink-40); }
+
+/* ---------- stat tiles / ledger ---------- */
+.stats{ display:flex; gap:14px; }
+.stat{ background:var(--paper-hi); border:2px solid var(--line); border-radius:var(--r-md); padding:13px 16px; }
+.stat .n{ font-family:var(--mono); font-weight:700; font-size:24px; color:var(--ink); letter-spacing:-.03em; }
+.stat .n .u{ font-size:13px; color:var(--ink-40); }
+.stat .k{ font-family:var(--ui); font-weight:700; font-size:11px; text-transform:uppercase;
+  letter-spacing:.08em; color:var(--ink-40); margin-top:3px; }
+.stat.gold .n{ color:var(--gold-ink); }
+
+/* ---------- tool loop (Skill / MCP) ---------- */
+.tools{ font-family:var(--mono); font-size:12.5px; line-height:1.85; color:var(--ink-55);
+  background:var(--paper-lo); border-radius:var(--r-md); padding:16px 18px; border:2px solid var(--line); }
+.tools .fn{ color:var(--gold-ink); }
+.tools .ok{ color:var(--ink-40); }
+.tools .arrow{ color:var(--ink-26); }
+
+/* ---------- verdict / kept rows (the trust proof) ---------- */
+.kept{ display:flex; align-items:center; gap:12px; padding:11px 4px; border-bottom:1.5px solid var(--line); }
+.kept .g{ font-family:var(--ui); font-weight:800; font-size:14.5px; color:var(--ink); }
+.kept .s{ font-family:var(--ui); font-size:13px; color:var(--ink-55); }
+.kept .seal{ margin-left:auto; }
+.kept.loose .g{ color:var(--pencil-lo); }
+
+/* ---------- misc ---------- */
+.h1{ font-family:var(--display); font-weight:700; font-size:40px; color:var(--ink); line-height:1.04; letter-spacing:-.01em; }
+.h2{ font-family:var(--display); font-weight:700; font-size:25px; color:var(--ink); }
+.lead{ font-family:var(--hand); font-size:22px; color:var(--ink-72); line-height:1.4; }
+.body{ font-family:var(--ui); font-size:15px; color:var(--ink-55); line-height:1.55; }
+.foot{ font-family:var(--ui); font-size:12px; color:var(--ink-40); }
+.em{ color:var(--gold-ink); }
+.pin{ position:absolute; z-index:5; }
