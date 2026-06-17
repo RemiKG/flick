@@ -1,0 +1,122 @@
+/* Flick — the real app's layout. Reuses the locked tokens + component atoms; makes
+   the fixed 1440×900 mockups a responsive, live product without touching the look.
+   The calm cream chrome frames the crayon cartoons; the cartoons come alive here. */
+
+/* ── shell: full-viewport, the sugar-paper stage behind everything ─────────── */
+html, body { min-height: 100%; background: var(--paper); }
+.app { position: relative; width: 100%; min-height: 100vh; height: auto; overflow: visible; background: var(--paper); }
+.stage {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 78% 12%, rgba(230,218,192,.5), transparent 60%),
+    radial-gradient(50% 40% at 18% 82%, rgba(230,218,192,.45), transparent 60%),
+    radial-gradient(70% 60% at 50% 44%, transparent 60%, rgba(42,33,20,.06)),
+    var(--paper);
+}
+.stage::after {
+  content: ""; position: absolute; inset: 0; opacity: .5; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 0.32 0 0 0 0 0.28 0 0 0 0 0.20 0 0 0 0.34 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+.z { position: relative; z-index: 2; }
+.boot { padding: 120px 40px; text-align: center; font-family: var(--hand); font-size: 22px; color: var(--ink-40); }
+[hidden] { display: none !important; }
+
+/* ── top bar ──────────────────────────────────────────────────────────────── */
+.topbar {
+  position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 18px;
+  height: 66px; padding: 0 clamp(16px, 3vw, 34px);
+  background: color-mix(in srgb, var(--paper) 86%, transparent); backdrop-filter: blur(6px);
+  border-bottom: 2px solid var(--line);
+}
+.topbar .brand { display: flex; align-items: center; gap: 10px; cursor: pointer; flex: none; }
+.topbar .tabs { display: flex; gap: 4px; }
+.topbar .tab {
+  font-family: var(--ui); font-weight: 800; font-size: 14px; color: var(--ink-55);
+  padding: 8px 14px; border-radius: var(--r-pill); cursor: pointer; border: none; background: none;
+}
+.topbar .tab:hover { color: var(--ink); }
+.topbar .tab.on { color: var(--ink); background: var(--paper-hi); box-shadow: var(--lift-sm); }
+.topbar .spacer { flex: 1; }
+.readout { display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 12px; color: var(--ink-55); }
+.readout b { color: var(--ink); font-weight: 700; }
+.readout .sep { width: 1px; height: 18px; background: var(--line-2); }
+.readout .off { color: var(--pencil-lo); }
+@media (max-width: 860px) { .readout .r-hide { display: none; } }
+@media (max-width: 620px) { .readout { display: none; } .topbar .tab { padding: 8px 10px; font-size: 13px; } }
+
+/* ── screen wrapper ───────────────────────────────────────────────────────── */
+.screen { max-width: 1440px; margin: 0 auto; padding: clamp(20px, 3vw, 34px) clamp(16px, 3.2vw, 46px) 90px; }
+.kick { font-family: var(--hand); font-size: clamp(18px,2vw,22px); color: var(--gold-ink); }
+.foot-line { position: fixed; bottom: 12px; left: clamp(16px,3.2vw,46px); z-index: 1; font-family: var(--ui); font-size: 12px; color: var(--ink-40); }
+@media (max-width: 760px) { .foot-line { position: static; margin: 28px 16px 8px; } }
+.rlab { font-family: var(--ui); text-transform: uppercase; letter-spacing: .14em; font-weight: 800; font-size: 11px; color: var(--ink-40); margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+.rlab .bar { flex: 1; height: 2px; background: var(--line); border-radius: 2px; }
+
+/* ── the movie window: brings the crayon cartoon ALIVE (CSS-driven, gated) ──── */
+.window { position: relative; }
+.window svg, .window video, .window img.mv-video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.window .cap .line { display: block; }
+.window .badge-post { position: absolute; left: 10px; top: 10px; z-index: 6; font-family: var(--mono); font-size: 10.5px;
+  color: var(--ink-55); background: color-mix(in srgb, var(--paper-hi) 88%, transparent); border-radius: 6px; padding: 3px 8px; }
+.window .playbtn { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 5; cursor: pointer; border: none; background: none; }
+
+.window.playing .mv-char { animation: mv-bob 3.6s ease-in-out infinite; }
+.window.playing .mv-cloud { animation: mv-drift 30s linear infinite; animation-delay: calc(var(--ci, 0) * -9s); }
+.window.playing .mv-stars { animation: mv-twinkle 3.2s ease-in-out infinite; }
+.window.playing .mv-spark { animation: mv-pulse 2.1s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.window.playing .mv-sun  { animation: mv-sun 9s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.window.stepoff .mv-char { animation: mv-step 2.2s cubic-bezier(.2,.7,.3,1) both; }
+@keyframes mv-bob { 0%,100%{transform:translateY(0) rotate(0) scaleY(1)} 25%{transform:translateY(-2%) rotate(-.6deg) scaleY(1.02)} 50%{transform:translateY(.3%) rotate(0) scaleY(.985)} 75%{transform:translateY(-1.2%) rotate(.6deg) scaleY(1.01)} }
+@keyframes mv-drift { from{transform:translateX(-4%)} to{transform:translateX(112%)} }
+@keyframes mv-twinkle { 0%,100%{opacity:.85} 50%{opacity:.45} }
+@keyframes mv-pulse { 0%,100%{opacity:.9; transform:scale(1)} 50%{opacity:.5; transform:scale(1.25)} }
+@keyframes mv-sun { 0%,100%{transform:rotate(0)} 50%{transform:rotate(8deg)} }
+@keyframes mv-step { from{transform:translateX(-42%) scale(.9); opacity:.2} to{transform:translateX(0) scale(1); opacity:1} }
+@media (prefers-reduced-motion: reduce) { .window.playing *, .window.stepoff * { animation: none !important; } }
+
+/* ── player (scrubber + hand-drawn beat markers) ───────────────────────────── */
+.player { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
+.player .pp { width: 46px; height: 46px; flex: none; border-radius: 50%; background: var(--gold); border: 2px solid var(--gold-core);
+  display: flex; align-items: center; justify-content: center; box-shadow: var(--glow-sm); cursor: pointer; }
+.player .mid { flex: 1; }
+.player .track { position: relative; height: 8px; border-radius: 999px; background: var(--paper-2); border: 1.5px solid var(--line-2); cursor: pointer; }
+.player .track .fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--gold); }
+.player .track .knob { position: absolute; top: 50%; width: 18px; height: 18px; border-radius: 50%; background: var(--paper-hi); border: 3px solid var(--gold-core); transform: translate(-50%,-50%); box-shadow: var(--lift-sm); }
+.player .beats { display: flex; justify-content: space-between; margin-top: 9px; }
+.player .beat { display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; }
+.player .beat span.lbl { font-family: var(--mono); font-size: 9.5px; color: var(--ink-40); }
+.player .beat.on span.lbl { color: var(--gold-ink); }
+.player .time { font-family: var(--mono); font-size: 13px; color: var(--ink-55); flex: none; }
+
+/* ── 01 · Fridge ──────────────────────────────────────────────────────────── */
+.scr-fridge .main { display: flex; gap: clamp(20px,3vw,36px); align-items: flex-start; }
+.scr-fridge .left { flex: 1 1 60%; min-width: 0; }
+.scr-fridge .right { flex: 1 1 34%; min-width: 300px; }
+.scr-fridge .hook { font-family: var(--hand); font-size: clamp(17px,1.7vw,21px); color: var(--ink-55); line-height: 1.42; margin-top: 12px; max-width: 660px; }
+.scr-fridge .hook b { color: var(--gold-ink); }
+.composer2 { position: relative; margin-top: 24px; min-height: 300px; background: var(--paper-lo); border: 3px dashed var(--line-3);
+  border-radius: var(--r-lg); display: flex; align-items: center; justify-content: center; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
+.composer2.drag { border-color: var(--gold); background: var(--gold-soft); }
+.composer2.filled { border-style: solid; border-color: var(--gold-core); }
+.composer2 .drop { position: relative; z-index: 3; padding: 30px; }
+.composer2 .drop .big { font-family: var(--display); font-weight: 700; font-size: 24px; color: var(--ink); margin-top: 12px; }
+.composer2 .drop .sub { font-family: var(--hand); font-size: 18px; color: var(--ink-55); margin-top: 2px; }
+.composer2 .dropArt { width: 150px; height: 150px; margin: 0 auto; opacity: .5; }
+.composer2 .preview { max-width: min(80%, 460px); max-height: 240px; border-radius: 10px; box-shadow: var(--lift); }
+.composer2 .tapeC { position: absolute; z-index: 4; width: 110px; height: 40px; }
+.btnrow { display: flex; align-items: center; gap: 18px; margin-top: 22px; flex-wrap: wrap; }
+.btnrow .fine { font-family: var(--hand); font-size: 16px; color: var(--ink-55); }
+.toy { display: flex; flex-direction: column; gap: 14px; }
+.ep { display: flex; gap: 14px; align-items: center; }
+.ep .win { width: 210px; height: 118px; flex: none; }
+.ep .meta .t { font-family: var(--display); font-weight: 700; font-size: 16px; color: var(--ink); margin-top: 6px; }
+.ep .meta .m { font-family: var(--mono); font-size: 11.5px; color: var(--ink-40); margin-top: 3px; }
+.ep .meta .ask { font-family: var(--hand); font-size: 16px; color: var(--gold-ink); margin-top: 5px; cursor: pointer; }
+.scr-fridge .scribbles { position: fixed; right: 22px; bottom: 26px; z-index: 3; width: 140px; pointer-events: none; }
+@media (max-width: 900px) { .scr-fridge .main { flex-direction: column; } .scr-fridge .right { width: 100%; } .scr-fridge .scribbles { display: none; } }
+
+/* ── 02 · Backstage ───────────────────────────────────────────────────────── */
+.scr-backstage .main { display: flex; gap: clamp(18px,2.4vw,26px); align-items: flex-start; }
+.scr-backstage .left { flex: 1 1 64%; min-width: 0; }
+.scr-backstage .right { flex: 1 1 32%; min-width: 300px; }
+.scr-backstage .head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
