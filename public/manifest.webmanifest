@@ -1,0 +1,16 @@
+{
+  "name": "Flick — flick it to life",
+  "short_name": "Flick",
+  "description": "Turn one child's drawing into a real ~50s cartoon — and every frame still looks like they drew it.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F6EFE0",
+  "theme_color": "#F6EFE0",
+  "categories": ["entertainment", "kids", "photo"],
+  "icons": [
+    { "src": "/icons/favicon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/app-icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
