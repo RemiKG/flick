@@ -54,3 +54,60 @@
   --f-kept:    #E7A331;   /* faithful — glowing gold */
   --f-good:    #D8A63F;
   --f-mid:     #C1A868;   /* holding */
+  --f-loose:   #A9A38C;   /* drifting — cooling toward graphite */
+  --f-redraw:  #9C9585;   /* below threshold — "let me draw that again" */
+
+  /* ---- Cartoon crayon palette — used INSIDE the movie window / the child's world ONLY.
+         (The chrome never uses these; this is the "cream frames vivid" discipline.) ---- */
+  --c-sky:    #7FB6DA;   --c-sky-lo:  #5E97BE;
+  --c-grass:  #7CA843;   --c-grass-lo:#5C8730;   /* the scribble-green */
+  --c-sun:    #F4C43C;   --c-sun-hi:  #FBDD7C;
+  --c-dragon: #6FA85C;   --c-dragon2: #4C8A44;   /* the two over-pressed greens */
+  --c-flame:  #EF8B39;   --c-flame-hi:#F7B267;   /* the scribbled flame */
+  --c-plum:   #8C6BB1;
+  --c-berry:  #CE7090;   /* a dusty berry (a warm pink, never alarm-red) */
+  --c-cocoa:  #9A6A40;
+  --c-cloud:  #FBF4E6;
+  --c-night:  #3B4A6B;   /* the scared-of-the-dark night */
+
+  /* ---- Type ---- */
+  --display: 'Fredoka', system-ui, sans-serif;              /* chunky rounded headers + wordmark base */
+  --hand:    'Patrick Hand', 'Comic Sans MS', cursive;      /* scrapbook labels, storybook line, child voice */
+  --ui:      'Nunito', system-ui, sans-serif;               /* chrome, buttons, body */
+  --mono:    'Space Mono', ui-monospace, monospace;         /* EVERY live numeral — the honest little counter */
+
+  /* ---- Geometry & lift (soft, organic, hand-cut) ---- */
+  --r-lg: 20px; --r-md: 14px; --r-sm: 9px; --r-pill: 999px;
+  --lift:    0 20px 40px -26px rgba(44,38,32,.44);   /* a tape-corner card floating on paper */
+  --lift-sm: 0 10px 22px -16px rgba(44,38,32,.40);
+  --press:   0 1.5px 0 rgba(44,38,32,.14);           /* the pressed edge under a crayon piece */
+  --glow:    0 0 26px -2px var(--gold-glow);         /* the gold "alive" glow — light, not fill */
+  --glow-sm: 0 0 14px -1px rgba(231,163,49,.5);
+}
+
+*{ box-sizing:border-box; }
+html,body{ margin:0; }
+body{ font-family:var(--ui); color:var(--ink); background:var(--paper);
+      -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+
+/* Numerals are ALWAYS mono + tabular — the honest little counter (fidelity, timer, seconds). */
+.num,.mono{ font-family:var(--mono); font-feature-settings:'tnum' 1,'zero' 1; letter-spacing:-.02em; }
+
+/* The scrapbook hand — captions, the child's voice, storybook narration. */
+.hand{ font-family:var(--hand); font-weight:400; line-height:1.34; }
+
+/* A pinned small-caps label (the crew role, the section marker). */
+.label{ font-family:var(--ui); text-transform:uppercase; letter-spacing:.16em;
+        font-weight:800; font-size:11px; color:var(--ink-55); }
+.label-hand{ font-family:var(--hand); text-transform:uppercase; letter-spacing:.10em;
+        font-size:13px; color:var(--ink-40); }
+
+/* Paper grain — the construction-paper tooth. Add <div class="grain"></div> in a positioned surface. */
+.grain{ position:absolute; inset:0; pointer-events:none; opacity:.5; mix-blend-mode:multiply; z-index:1;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 0.32 0 0 0 0 0.28 0 0 0 0 0.20 0 0 0 0.34 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+.grain.soft{ opacity:.28; }
+
+/* the little gold dot used for "kept / live / on". */
+.golddot{ width:8px;height:8px;border-radius:50%;background:var(--gold);display:inline-block;
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--gold) 24%, transparent), 0 0 10px 0 var(--gold-glow); }
+.pendot{ width:8px;height:8px;border-radius:50%;background:var(--pencil);display:inline-block; opacity:.8; }
