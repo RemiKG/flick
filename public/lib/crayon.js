@@ -124,3 +124,157 @@
     const [bx,by,bw,bh]=bbox, cx=bx+bw/2, cy=by+bh/2;
     const diag=Math.hypot(bw,bh)/2 + overshoot;
     const rad=angle*Math.PI/180, ca=Math.cos(rad), sa=Math.sin(rad);
+    const nLines=Math.ceil((diag*2)/gap);
+    let pts=[];
+    for(let i=0;i<=nLines;i++){
+      const off=-diag + i*gap + jit(r,gap*0.22);
+      const len=diag + jit(r,overshoot);
+      const ox=-sa*off, oy=ca*off;
+      let a=[cx+ox-ca*len, cy+oy-sa*len], b=[cx+ox+ca*len, cy+oy+sa*len];
+      a=[a[0]+jit(r,2.6),a[1]+jit(r,2.6)]; b=[b[0]+jit(r,2.6),b[1]+jit(r,2.6)];
+      if(i%2===0) pts.push(a,b); else pts.push(b,a);
+    }
+    let d=`M ${f1(pts[0][0])} ${f1(pts[0][1])}`;
+    for(let i=1;i<pts.length;i++) d+=` L ${f1(pts[i][0])} ${f1(pts[i][1])}`;
+    return d;
+  }
+
+  /* VISIBLE crayon scribble fill inside clipId — a child colouring back and forth, DENSE.
+     Fat overlapping strokes in ONE direction (gap<w), ~90% coverage, tooth peeking through. */
+  function scribble(clipId, bbox, {color=C.gold, seed=2, angle=20, gap=6.5, w=12, op=.94, overshoot=12}={}){
+    const r=rng(seed);
+    const d1=serpentine(bbox,r,{angle,gap,overshoot});
+    const d2=serpentine(bbox,r,{angle:angle+jit(r,4), gap, overshoot}); // second pass fills valleys
+    return `<g clip-path="url(#${clipId})"><g filter="url(#wax)">
+      <path d="${d1}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" opacity="${op}"/>
+      <path d="${d2}" fill="none" stroke="${color}" stroke-width="${f1(w*0.9)}" stroke-linecap="round" stroke-linejoin="round" opacity="${op*0.7}"/>
+    </g></g>`;
+  }
+
+  /* SOLID crayon fill — the default for cartoon shapes. A filled waxy area with directional
+     streaks (uneven pressure), a lighter catch and a darker press, and the paper tooth showing. */
+  function crayonFill(clipId, bbox, {color=C.gold, seed=2, angle=18, streaks=true}={}){
+    const r=rng(seed); const [bx,by,bw,bh]=bbox;
+    const X=bx-6,Y=by-6,W=bw+12,H=bh+12;
+    let str='';
+    if(streaks){
+      const rad=angle*Math.PI/180, ca=Math.cos(rad), sa=Math.sin(rad);
+      const cx=bx+bw/2, cy=by+bh/2, diag=Math.hypot(bw,bh)/2+8;
+      const n=Math.round(diag*2/12);
+      for(let i=0;i<n;i++){
+        const off=-diag+i*12+jit(r,4), ox=-sa*off, oy=ca*off, len=diag+jit(r,8);
+        const dark=r()>.5;
+        const col = dark? C.ink : '#ffffff';
+        const opv = dark? (0.05+r()*0.06) : (0.06+r()*0.08);
+        str+=`<path d="M ${f1(cx+ox-ca*len)} ${f1(cy+oy-sa*len)} L ${f1(cx+ox+ca*len)} ${f1(cy+oy+sa*len)}"
+          fill="none" stroke="${col}" stroke-width="${f1(7+r()*7)}" stroke-linecap="round" opacity="${f1(opv)}"/>`;
+      }
+    }
+    return `<g clip-path="url(#${clipId})">
+      <rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="${color}"/>
+      <g filter="url(#wax)">${str}</g>
+      <rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="${color}" filter="url(#speck)" opacity=".7"/>
+      <rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="${color}" filter="url(#speck-hi)" opacity=".35"/>
+    </g>`;
+  }
+
+  /* a big waxy area for skies/grounds: solid colour + broad wavy streaks + tooth */
+  function waxArea(clipId, bbox, {color=C.cSky, streak=C.cSkyLo, seed=3}={}){
+    const r=rng(seed); const [bx,by,bw,bh]=bbox; let s='';
+    const n=Math.round(bh/24)+3;
+    for(let i=0;i<n;i++){
+      const y=by+(i/n)*bh+jit(r,6), op=0.10+r()*0.16;
+      s+=`<path d="M ${bx-12} ${f1(y)} Q ${bx+bw/2} ${f1(y+jit(r,12))} ${bx+bw+12} ${f1(y+jit(r,7))}"
+        fill="none" stroke="${streak}" stroke-width="${f1(9+r()*9)}" stroke-linecap="round" opacity="${f1(op)}"/>`;
+    }
+    return `<g clip-path="url(#${clipId})">
+      <rect x="${bx-6}" y="${by-6}" width="${bw+12}" height="${bh+12}" fill="${color}"/>
+      <g filter="url(#wax)">${s}</g>
+      <rect x="${bx-6}" y="${by-6}" width="${bw+12}" height="${bh+12}" fill="${color}" filter="url(#speck)" opacity=".55"/>
+    </g>`;
+  }
+
+  /* ============================ scrapbook atoms ============================ */
+
+  /* a strip of translucent washi/masking tape, angle in deg, over a card corner. */
+  function tape(x,y,w=92,h=32,angle=-16,seed=5){
+    const r=rng(seed);
+    // torn-ish ends (slight zigzag), semi-opaque warm cream so the paper below shows through
+    const zig=(sign)=>{ let d=`M ${sign>0?w:0} 0`; const steps=4; for(let i=1;i<=steps;i++){ d+=` L ${f1((sign>0?w:0)+sign*jit(r,2.4))} ${f1(h*i/steps)}`;} return d; };
+    return `<g transform="translate(${x},${y}) rotate(${angle})">
+      <rect x="1" y="2" width="${w}" height="${h}" rx="1.5" fill="${C.ink}" opacity=".10"/>
+      <rect x="0" y="0" width="${w}" height="${h}" rx="1.5" fill="${C.gold}" opacity=".34"/>
+      <rect x="0" y="0" width="${w}" height="${h}" rx="1.5" fill="${C.goldSoft}" opacity=".5"/>
+      <rect x="0" y="0" width="${w}" height="${h}" fill="${C.gold}" filter="url(#speck)" opacity=".4"/>
+      <line x1="6" y1="6" x2="${w-6}" y2="6" stroke="#fff" stroke-width="2.4" opacity=".4"/>
+      <line x1="8" y1="${h-6}" x2="${w-10}" y2="${h-6}" stroke="${C.goldCore}" stroke-width="1.6" opacity=".28"/>
+    </g>`;
+  }
+
+  /* a slightly lopsided gold star sticker (the i-dot / the "kept" mark) */
+  function star(cx,cy,rad=16,{seed=7,fill=C.gold,edge=C.goldCore,glow=false}={}){
+    const r=rng(seed), pts=[];
+    for(let i=0;i<10;i++){
+      const a=-Math.PI/2 + i*Math.PI/5;
+      const rr=(i%2===0?rad:rad*0.44)*(1+jit(r,0.06));
+      pts.push([cx+Math.cos(a)*rr, cy+Math.sin(a)*rr + jit(r,0.6)]);
+    }
+    let d=`M ${f1(pts[0][0])} ${f1(pts[0][1])}`;
+    for(let i=1;i<pts.length;i++) d+=` L ${f1(pts[i][0])} ${f1(pts[i][1])}`;
+    d+=' Z';
+    const g = glow ? `<circle cx="${cx}" cy="${cy}" r="${rad*1.7}" fill="url(#gGlow)"/>`:'';
+    return `<g>${g}<g filter="url(#wax-fine)">
+      <path d="${d}" fill="${fill}"/>
+      <path d="${d}" fill="none" stroke="${edge}" stroke-width="2.4" stroke-linejoin="round"/>
+      <path d="M ${cx-rad*0.3} ${cy-rad*0.28} q ${rad*0.2} ${-rad*0.16} ${rad*0.42} ${-rad*0.02}"
+        fill="none" stroke="${C.goldHi}" stroke-width="2.2" stroke-linecap="round" opacity=".85"/>
+    </g></g>`;
+  }
+
+  /* a pushpin / thumbtack holding a drawing to the fridge */
+  function pushpin(cx,cy,{color=C.gold,seed=8}={}){
+    return `<g filter="url(#wax-fine)">
+      <ellipse cx="${cx+1}" cy="${cy+2}" rx="10" ry="9" fill="${C.ink}" opacity=".16"/>
+      <circle cx="${cx}" cy="${cy}" r="9" fill="${color}"/>
+      <circle cx="${cx}" cy="${cy}" r="9" fill="none" stroke="${C.goldCore}" stroke-width="2"/>
+      <circle cx="${cx-3}" cy="${cy-3}" r="2.6" fill="${C.goldHi}"/>
+    </g>`;
+  }
+
+  /* a wobbly hand-drawn divider rule */
+  function rule(x1,y,x2,{color=C.ink26,seed=9,w=3}={}){
+    const r=rng(seed), n=Math.max(6,Math.round((x2-x1)/40)), pts=[];
+    for(let i=0;i<=n;i++) pts.push([x1+(x2-x1)*i/n, y+jit(r,2.2)]);
+    return stroke(wobblePath(pts,r,0.6),{color,w,seed,passes:1,op:.8});
+  }
+
+  /* ============================ backgrounds ============================ */
+
+  /* the calm cream sugar-paper surface: base + mottle + speckle + soft vignette + torn deckle */
+  function sugarPaper(w,h,{seed=42,tone=C.paper,deckle=false}={}){
+    const r=rng(seed); let flecks='';
+    for(let i=0;i<Math.round(w*h/5200);i++){
+      flecks+=`<circle cx="${f1(r()*w)}" cy="${f1(r()*h)}" r="${f1(0.5+r()*1.1)}"
+        fill="${r()>.5?C.paper2:C.deckle}" opacity="${f1(0.10+r()*0.16)}"/>`;
+    }
+    let mottle='';
+    for(let i=0;i<14;i++){
+      mottle+=`<ellipse cx="${f1(r()*w)}" cy="${f1(r()*h)}" rx="${f1(70+r()*180)}" ry="${f1(50+r()*120)}"
+        fill="${C.paper2}" opacity="${f1(0.05+r()*0.06)}"/>`;
+    }
+    const rim = deckle ? `<rect x="3" y="3" width="${w-6}" height="${h-6}" rx="10" fill="none"
+        stroke="${C.deckle}" stroke-width="3" opacity=".5" filter="url(#wax-loose)"/>`:'';
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+      <rect width="${w}" height="${h}" fill="${tone}"/>
+      <g style="mix-blend-mode:multiply">${mottle}</g>
+      ${flecks}
+      <rect width="${w}" height="${h}" fill="url(#vign)"/>
+      ${rim}
+    </svg>`;
+  }
+
+  root.Crayon = {
+    C, rng, defs, stroke, line, blobD, serpentine, scribble, crayonFill, waxArea,
+    tape, star, pushpin, rule, sugarPaper, f1, jit, wobblePath
+  };
+})(window);
