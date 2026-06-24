@@ -75,3 +75,80 @@ app.post('/api/flicks', async (req, res) => {
       const buf = Buffer.from(m[2], 'base64');
       flick.source.file = `source.${ext}`;
       await store.saveMedia(id, `source.${ext}`, buf);
+    }
+    await store.saveFlick(flick);
+    res.json({ id, watch: `/watch/${id}`, stream: `/api/flicks/${id}/stream`, engineLive: engineLive() });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// SSE progress. Starts the pipeline on first connect (guarantees the client
+// catches every event); replays 'complete' for already-finished flicks.
+const started = new Set();
+app.get('/api/flicks/:id/stream', async (req, res) => {
+  const id = req.params.id;
+  const flick = await store.getFlick(id);
+  if (!flick) return res.status(404).end();
+  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
+  res.write(': flick stream\n\n');
+  const send = (evt) => { try { res.write(`data: ${JSON.stringify(evt)}\n\n`); } catch {} };
+
+  if (flick.status === 'ready') { send({ stage: 'complete', flick }); return res.end(); }
+
+  const unsub = subscribe(id, send);
+  const ka = setInterval(() => { try { res.write(': ka\n\n'); } catch {} }, 15000);
+  req.on('close', () => { clearInterval(ka); unsub(); });
+
+  if (flick.status === 'draft' && !started.has(id) && !isRunning(id)) {
+    started.add(id);
+    runFlick(flick).catch((e) => send({ stage: 'error', message: e.message })).finally(() => started.delete(id));
+  }
+});
+
+// targeted re-render of ONE shot (the Booth's "re-draw one shot")
+app.post('/api/flicks/:id/redraw', async (req, res) => {
+  try {
+    const flick = await store.getFlick(req.params.id);
+    if (!flick) return res.status(404).json({ error: 'not found' });
+    const shotNo = Number(req.body?.shot);
+    const shot = (flick.shots || []).find((s) => s.shot_no === shotNo);
+    if (!shot) return res.status(400).json({ error: 'no such shot' });
+    shot._redrawn = true; shot.redraws = (shot.redraws || 0) + 1;
+    const cam = await crew.roll_camera({ flick, sheet: flick.drawingSheet, shot, subSeed: 100 + shot.redraws }, {});
+    const verdict = await crew.check_fidelity({ flick, sheet: flick.drawingSheet, shot, frameFile: null }, {});
+    shot.fidelity = verdict.fidelity; shot.engine = cam.engine; shot.preview = cam.preview;
+    // recompute ledger
+    const fids = flick.shots.filter((s) => typeof s.fidelity === 'number').map((s) => s.fidelity);
+    flick.ledger.avgFidelity = fids.length ? Math.round((fids.reduce((a, b) => a + b, 0) / fids.length) * 100) / 100 : null;
+    flick.ledger.redrawn = flick.shots.filter((s) => (s.redraws || 0) > 0).length;
+    await store.saveFlick(flick);
+    res.json({ shot, ledger: flick.ledger });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// single crew tool over HTTP (the Skill's scripts call these; handy for curl)
+app.get('/api/tools', (_req, res) => res.json({ tools: TOOLS }));
+app.post('/api/tools/:name', async (req, res) => {
+  try { res.json(await callTool(req.params.name, req.body || {})); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// ── MCP surface ──────────────────────────────────────────────────────────
+mountMCP(app);
+
+// ── static: media store, then the SPA ─────────────────────────────────────
+app.use('/media', express.static(store.MEDIA_DIR, { maxAge: '1h' }));
+app.use(express.static(PUBLIC, { extensions: ['html'] }));
+
+// SPA history fallback (client routes: /, /backstage, /toybox, /booth, /watch/:id, /edges)
+app.get(/^\/(?!api\/|media\/|mcp\/).*/, (_req, res) => res.sendFile(path.join(PUBLIC, 'index.html')));
+
+const server = app.listen(config.port, async () => {
+  await ensureSeed().catch((e) => console.error('seed error', e.message));
+  const ff = await hasFFmpeg();
+  console.log(`\n  Flick is live  →  http://localhost:${config.port}`);
+  console.log(`  crew: ${engineLive() ? 'Qwen Cloud ONLINE' : 'offline (add DASHSCOPE_API_KEY to wake the crew)'}  ·  ffmpeg: ${ff ? 'yes' : 'no'}  ·  ${config.deployLabel}`);
+  console.log(`  toy box seeded: ${SEED_IDS.length} examples  ·  MCP: /mcp/sse\n`);
+});
+server.on('error', (e) => { console.error('server error:', e.message); process.exit(1); });
