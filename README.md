@@ -90,3 +90,55 @@ make a flick by texting a photo of the fridge to a bot.
   SSE, so latency is visible and honest.
 
 ### Stack
+
+Node ≥ 18 · Express · vanilla-JS SPA (no build step) · system **ffmpeg** · a filesystem store.
+Two tiny deps (`express`, `dotenv`). Deploys as one process on Alibaba Cloud ECS/SAS.
+
+---
+
+## What is REAL
+
+Anything not listed here as real ships **honestly disclosed**, never faked.
+
+- **A stranger's own drawing is the only required input.** No account, no menu, no money rails.
+- **When a Qwen key is present**, the eight crew tools are real Qwen Cloud calls: the vision
+  Drawing Sheet, the story, the structured shot list, the world painted in the child's hand,
+  the **`wan2.7-r2v` reference-to-video conditioned on the exact drawing**, the frame-level
+  fidelity critic with **targeted single-shot re-render**, the narration (+ optional voice
+  clone), and the deterministic ffmpeg edit.
+- **Persistence is real** — Flick owns its Toy Box (Drawing Sheet, story, shot list, per-shot
+  fidelity, counters + downloaded media) on disk, so a child's flicks survive a closed tab and
+  a cold session (Qwen video URLs expire ~24h — Flick downloads immediately). A DB/OSS env seam
+  moves the durable copy to Alibaba Cloud at deploy time.
+- **Every on-screen number is computed live** — per-shot & average fidelity, shots re-drawn,
+  Wan seconds used vs the free budget, % saved vs re-filming the whole episode, end-to-end
+  wall-clock. Nothing is canned; if it can't be computed, it isn't shown.
+- **The MCP server and the Skill are real** — the same crew, mountable by any agent.
+
+### Honest offline mode (no key required)
+
+Flick runs cold with **zero configuration**. Without `DASHSCOPE_API_KEY` it degrades honestly
+and says so in the readout (*"engine offline · local preview"*): it samples the drawing's
+palette **from the actual pixels** in the browser, animates a **deterministic crayon preview**
+of the drawing, computes a local fidelity heuristic with a **real targeted re-render loop**,
+cuts a **real MP4 with ffmpeg** (a gentle Ken-Burns of the child's own drawing), and persists
+the Toy Box. A pre-seeded, clearly-labelled example toy box (dragon / robot / cat / napkin
+potato) lets a visitor see a finished flick in five seconds — each with *"ask your own"* that
+runs the identical real pipeline. Nothing offline masquerades as a Qwen result.
+
+---
+
+## Run it
+
+```bash
+cd repo
+npm install
+npm start                     # → http://localhost:8080
+```
+
+That's it — no build step. Open the URL, drop a drawing, press *Make a flick*.
+
+**To wake the Qwen crew**, add a key (see `.env.example`):
+
+```bash
+cp .env.example .env
