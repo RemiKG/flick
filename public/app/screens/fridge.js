@@ -56,3 +56,61 @@
     file.addEventListener('change', () => { if (file.files[0]) handleFile(file.files[0]); });
 
     function handleFile(f) {
+      if (!/^image\//.test(f.type)) { F.toast('That doesn\'t look like an image — try a photo of a drawing.'); return; }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result;
+        const img = new Image();
+        img.onload = () => {
+          const hints = F.samplePalette(img);
+          hints.char = 'photo';
+          F._pending = { image: dataUrl, hints, title: (f.name || '').replace(/\.[^.]+$/, '').slice(0, 40) || 'my drawing' };
+          composer.classList.add('filled');
+          drop.innerHTML = `<img class="preview" src="${dataUrl}" alt="your drawing"><div class="big" style="margin-top:12px">Pinned — ready to roll</div><div class="sub">press “Make a flick”, or tap to choose another</div>`;
+          make.disabled = false;
+        };
+        img.src = dataUrl;
+      };
+      reader.readAsDataURL(f);
+    }
+
+    make.addEventListener('click', async () => {
+      if (!F._pending) return;
+      make.disabled = true; make.textContent = 'rolling…';
+      try {
+        const settings = Object.assign({}, F.settings, { title: F._pending.title });
+        const res = await F.API.createFlick({ image: F._pending.image, hints: F._pending.hints, settings, child: F.settings.child || 'You' });
+        F.currentRun = res.id;
+        F.go('/backstage');
+      } catch (e) { F.toast('Could not start: ' + e.message); make.disabled = false; make.innerHTML = 'Make a flick <span class="k">→</span>'; }
+    });
+
+    // ── toy box (examples) ──
+    try {
+      const { examples } = await F.API.listFlicks();
+      const pick = pickTrio(examples);
+      const toy = el.querySelector('#toy');
+      toy.innerHTML = pick.map((f, i) => `
+        <div class="ep">
+          <div class="window win" data-id="${f.id}" style="cursor:pointer"><svg id="ep${i}" viewBox="0 0 210 118" preserveAspectRatio="xMidYMid slice"></svg></div>
+          <div class="meta">
+            <div class="tagcap">example</div>
+            <div class="t">${f.story ? f.story.title : f.id}</div>
+            <div class="m">${(f.meta && f.meta.seconds) || f.settings.seconds}s · fidelity ${fmtFid(f.ledger)}</div>
+            <div class="ask" data-ask="1">ask your own →</div>
+          </div>
+        </div>`).join('');
+      pick.forEach((f, i) => { document.getElementById('ep' + i).innerHTML = Movie.sceneSVG(f, 210, 118, { spark: false, motion: false, cloudN: 1 }); });
+      toy.querySelectorAll('.win').forEach((w) => w.addEventListener('click', () => F.go('/watch/' + w.dataset.id)));
+      toy.querySelectorAll('[data-ask]').forEach((a) => a.addEventListener('click', () => file.click()));
+    } catch (e) { el.querySelector('#toy').innerHTML = `<div class="lead" style="color:var(--ink-40)">toy box unavailable</div>`; }
+  }
+
+  function pickTrio(examples) {
+    const byChar = (c) => examples.find((e) => (e.render && e.render.char) === c);
+    const trio = [byChar('dragon'), byChar('robot'), byChar('cat')].filter(Boolean);
+    for (const e of examples) { if (trio.length >= 3) break; if (!trio.includes(e)) trio.push(e); }
+    return trio.slice(0, 3);
+  }
+  function fmtFid(l) { return l && typeof l.avgFidelity === 'number' ? l.avgFidelity.toFixed(2) : '—'; }
+})(window);
