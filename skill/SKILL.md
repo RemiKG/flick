@@ -29,3 +29,25 @@ models:
 
 A solo director running the whole production team. Eight tools, each a real Qwen Cloud
 call on `https://dashscope-intl.aliyuncs.com`. The output is worthless the instant it
+stops looking like the actual drawing — so **fidelity is the load-bearing core**.
+
+## The crew (tools)
+
+| tool | model | what it does |
+|---|---|---|
+| `read_drawing` | `qwen3-vl-plus` | reads the drawing into a Drawing Sheet — hero, palette-as-hex, wonky signatures |
+| `write_story` | `qwen3.7-max` | a 5-beat read-aloud story starring that character |
+| `storyboard` | `qwen3.7-plus` | a typed shot list + a Wan prompt per shot (`Entity + Scene + Motion`) |
+| `paint_set` | `wan2.6-t2i` | paints the world in the child's hand |
+| `roll_camera` | `wan2.7-r2v` | films each shot with **the drawing as the `reference_image`** |
+| `check_fidelity` | `qwen3-vl-plus` | scores each shot's fidelity back to the drawing (0–1) and flags the one to re-draw |
+| `voice_line` | `cosyvoice-v3-plus` | warm storybook narration (optionally a cloned grandparent's voice) |
+| `cut_episode` | `ffmpeg` | assembles the shots + narration into the ~50s episode |
+
+## How to run it
+
+Two ways, both real:
+
+1. **Against a running Flick server** (recommended — the identical pipeline the web app runs):
+   ```bash
+   export FLICK_URL=http://localhost:8080        # your deployed Flick backend
