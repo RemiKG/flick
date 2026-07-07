@@ -51,3 +51,21 @@ Two ways, both real:
 1. **Against a running Flick server** (recommended — the identical pipeline the web app runs):
    ```bash
    export FLICK_URL=http://localhost:8080        # your deployed Flick backend
+   python scripts/flick.py make --image ./fridge-dragon.jpg --mood "a bedtime story"
+   # -> prints the flick id + a watch URL; the server streams progress over SSE
+   ```
+
+2. **Directly against Qwen Cloud** (self-contained; needs `DASHSCOPE_API_KEY`):
+   ```bash
+   export DASHSCOPE_API_KEY=sk-...              # from https://home.qwencloud.com/api-keys
+   python scripts/flick.py read  --image ./fridge-dragon.jpg     # -> the Drawing Sheet
+   python scripts/flick.py story --sheet sheet.json             # -> the story
+   ```
+
+`scripts/flick.py` is stdlib-only (no pip installs). It reads `DASHSCOPE_API_KEY` from the
+environment and never hardcodes a key. See `references/rubric.md` for the fidelity rubric
+and `references/wan-prompt.md` for the `Entity + Scene + Motion` prompt formula.
+
+## The one promise
+
+> No smoothing. No "improving." No turning your kid's dragon into someone else's.
