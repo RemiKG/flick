@@ -142,3 +142,44 @@ That's it — no build step. Open the URL, drop a drawing, press *Make a flick*.
 
 ```bash
 cp .env.example .env
+#  DASHSCOPE_API_KEY=sk-...   (from https://home.qwencloud.com/api-keys)
+npm start
+```
+
+The readout flips to *engine qwen · wan2.7-r2v* and Backstage becomes real Qwen calls — no
+code change. See the deployment notes for running on Alibaba Cloud (the eligibility gate).
+
+### Environment
+
+| var | default | purpose |
+|---|---|---|
+| `DASHSCOPE_API_KEY` | *(empty → offline)* | wakes the whole crew |
+| `DASHSCOPE_BASE_URL` | `…/compatible-mode/v1` | OpenAI-compatible endpoint (chat/vision/images) |
+| `DASHSCOPE_NATIVE_URL` | `…/api/v1` | async video synthesis + TTS |
+| `PORT` | `8080` | HTTP port |
+| `DEPLOY_LABEL` | auto | the honest readout label (`on Alibaba Cloud` when deployed) |
+| `DATABASE_URL`, `OSS_*` | *(empty)* | optional: move the store to Alibaba RDS/OSS |
+| `MODEL_*` | the crew defaults | override any model id |
+
+### The MCP surface & the Skill
+
+- **MCP (SSE):** point an MCP client at `GET /mcp/sse`. Tools: the eight crew tools + `make_flick`.
+- **Skill:** `skill/SKILL.md` + `skill/scripts/flick.py` (stdlib-only). Drives a running Flick
+  server, or calls Qwen Cloud directly:
+  ```bash
+  export FLICK_URL=http://localhost:8080
+  python skill/scripts/flick.py make --image ./fridge-dragon.jpg --mood "a bedtime story"
+  ```
+
+---
+
+## Project layout
+
+```
+repo/
+├── public/                 the SPA (served static; no build)
+│   ├── index.html          app shell + PWA manifest/sw
+│   ├── styles/             tokens.css · components.css · app.css
+│   ├── lib/                crayon.js · scene.js · ui.js  (the procedural art engine)
+│   ├── app/                api.js · movie.js · components.js · app.js · screens/*.js
+│   ├── fonts/              Fredoka · Patrick Hand · Nunito · Space Mono (bundled, MIT/OFL)
