@@ -12,7 +12,10 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT = path.resolve(__dirname, '..', '..');
-export const STORE_DIR = path.join(ROOT, 'store');
+// Persistent by default (ROOT/store). On a read-only serverless FS (e.g. Vercel)
+// fall back to the writable /tmp; override anywhere with FLICK_STORE_DIR.
+export const STORE_DIR = process.env.FLICK_STORE_DIR
+  || (process.env.VERCEL ? '/tmp/flick-store' : path.join(ROOT, 'store'));
 export const FLICKS_DIR = path.join(STORE_DIR, 'flicks');
 export const MEDIA_DIR = path.join(STORE_DIR, 'media');
 

@@ -144,11 +144,19 @@ app.use(express.static(PUBLIC, { extensions: ['html'] }));
 // SPA history fallback (client routes: /, /backstage, /toybox, /booth, /watch/:id, /edges)
 app.get(/^\/(?!api\/|media\/|mcp\/).*/, (_req, res) => res.sendFile(path.join(PUBLIC, 'index.html')));
 
-const server = app.listen(config.port, async () => {
-  await ensureSeed().catch((e) => console.error('seed error', e.message));
-  const ff = await hasFFmpeg();
-  console.log(`\n  Flick is live  →  http://localhost:${config.port}`);
-  console.log(`  crew: ${engineLive() ? 'Qwen Cloud ONLINE' : 'offline (add DASHSCOPE_API_KEY to wake the crew)'}  ·  ffmpeg: ${ff ? 'yes' : 'no'}  ·  ${config.deployLabel}`);
-  console.log(`  toy box seeded: ${SEED_IDS.length} examples  ·  MCP: /mcp/sse\n`);
-});
-server.on('error', (e) => { console.error('server error:', e.message); process.exit(1); });
+// seed the Toy Box on init (both a persistent host and a serverless cold start)
+await ensureSeed().catch((e) => console.error('seed error', e.message));
+
+// Export the app so a serverless host (e.g. Vercel) can wrap it as a handler.
+export default app;
+
+// A persistent Node host (Alibaba Cloud ECS/SAS, or local) listens on a port.
+if (!process.env.VERCEL) {
+  const server = app.listen(config.port, async () => {
+    const ff = await hasFFmpeg();
+    console.log(`\n  Flick is live  →  http://localhost:${config.port}`);
+    console.log(`  crew: ${engineLive() ? 'Qwen Cloud ONLINE' : 'offline (add DASHSCOPE_API_KEY to wake the crew)'}  ·  ffmpeg: ${ff ? 'yes' : 'no'}  ·  ${config.deployLabel}`);
+    console.log(`  toy box seeded: ${SEED_IDS.length} examples  ·  MCP: /mcp/sse\n`);
+  });
+  server.on('error', (e) => { console.error('server error:', e.message); process.exit(1); });
+}
