@@ -10,6 +10,10 @@ RUN apt-get update \
 WORKDIR /app
 ENV NODE_ENV=production
 
+# This image exists for the Alibaba Cloud ECS deploy — label it honestly by
+# default (override at run time with -e DEPLOY_LABEL=...).
+ENV DEPLOY_LABEL="on Alibaba Cloud"
+
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 

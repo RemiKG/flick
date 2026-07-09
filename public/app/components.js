@@ -77,7 +77,9 @@
     const mirror = cfg.ephemeral && cfg.primaryUrl
       ? ` · hosted mirror (flicks last one session) — <a class="em" href="${cfg.primaryUrl}" target="_blank" rel="noopener" style="color:inherit">persistent toy box lives here →</a>`
       : '';
-    d.innerHTML = 'running on ' + (cfg.deployLabel || 'Node') + ' · Qwen Cloud · wan2.7-r2v · MIT open source' + mirror + ' · <span class="em" style="cursor:pointer" data-go="/edges">what we won\'t fake →</span>';
+    // labels carry their own preposition ("on Alibaba Cloud", "running locally") — don't double the verb
+    const where = cfg.deployLabel || 'on Node';
+    d.innerHTML = (/^running\b/.test(where) ? where : 'running ' + where) + ' · Qwen Cloud · wan2.7-r2v · MIT open source' + mirror + ' · <span class="em" style="cursor:pointer" data-go="/edges">what we won\'t fake →</span>';
     d.querySelector('[data-go]').addEventListener('click', () => F.go('/edges'));
     return d;
   };

@@ -22,7 +22,7 @@ app.use(express.json({ limit: '20mb' })); // drawings arrive as data URLs
 
 // ── config / health ─────────────────────────────────────────────────────────
 app.get('/api/health', async (_req, res) => res.json({ ok: true, engineLive: engineLive(), ffmpeg: await hasFFmpeg() }));
-app.get('/api/config', async (_req, res) => res.json({ ...publicConfig(), ffmpeg: await hasFFmpeg(), crew: crew.CREW }));
+app.get('/api/config', async (req, res) => res.json({ ...publicConfig(req.headers.host), ffmpeg: await hasFFmpeg(), crew: crew.CREW }));
 
 // ── Toy Box ───────────────────────────────────────────────────────────────
 app.get('/api/flicks', async (_req, res) => {

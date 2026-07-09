@@ -48,11 +48,16 @@ export const config = {
 export const engineLive = () => config.apiKey.length > 0;
 
 // A compact, non-secret description of the crew for the /api/config surface.
-export function publicConfig() {
+// When no deploy env is set but the request arrives on a non-local host, the
+// box is clearly not a laptop — say so instead of claiming "running locally".
+export function publicConfig(host = '') {
+  const remote = host && !/^(localhost|127\.|\[::1\]|0\.0\.0\.0)/i.test(host);
+  const deployLabel = config.deployLabel === 'running locally' && remote
+    ? 'on a remote host' : config.deployLabel;
   return {
     engineLive: engineLive(),
-    deployLabel: config.deployLabel,
-    onAlibaba: /alibaba/i.test(config.deployLabel),
+    deployLabel,
+    onAlibaba: /alibaba/i.test(deployLabel),
     ephemeral: !!process.env.VERCEL,
     primaryUrl: config.primaryUrl,
     wanFreeSeconds: config.wanFreeSeconds,
