@@ -183,3 +183,24 @@ repo/
 │   ├── lib/                crayon.js · scene.js · ui.js  (the procedural art engine)
 │   ├── app/                api.js · movie.js · components.js · app.js · screens/*.js
 │   ├── fonts/              Fredoka · Patrick Hand · Nunito · Space Mono (bundled, MIT/OFL)
+│   └── icons/, manifest.webmanifest, sw.js
+├── src/server/             index.js · config.js · qwen.js · crew.js · pipeline.js
+│                           store.js · ffmpeg.js · mcp.js · seed.js · util.js
+├── skill/                  SKILL.md · scripts/flick.py · references/
+├── store/                  the persistent Toy Box (runtime; git-ignored)
+├── .env.example  ·  LICENSE (MIT)  ·  package.json
+```
+
+## Honest edges
+
+Fidelity is a spectrum (a very abstract scribble is genuinely hard — the Critic says so and
+offers *keep it looser* / *try again*). Video is a real async render (latency is visible, not
+hidden). Episodes are short by design (finite free Wan seconds; only the drifting shot is
+re-drawn). Titles/captions/the fridge frame are **deterministic post**, disclosed. The measured
+numbers are honest small-N demonstrations, not a benchmark.
+
+> **What Flick will never do is swap in a stranger's dragon and call it yours.**
+
+## License
+
+MIT — see [`LICENSE`](./LICENSE). Fonts are under their own MIT/OFL licenses.
