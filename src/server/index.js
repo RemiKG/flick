@@ -29,10 +29,12 @@ app.get('/api/flicks', async (_req, res) => {
   const all = await store.listFlicks();
   const kept = all.filter((f) => !f.example);
   const examples = all.filter((f) => f.example);
-  const mins = kept.reduce((a, f) => a + (f.meta?.seconds || f.settings?.seconds || 0), 0) / 60;
-  const fids = kept.map((f) => f.ledger?.avgFidelity).filter((x) => typeof x === 'number');
+  // stats count only REAL runs — seeded demo records never pad the numbers
+  const real = kept.filter((f) => !f.example_seed);
+  const mins = real.reduce((a, f) => a + (f.meta?.seconds || f.settings?.seconds || 0), 0) / 60;
+  const fids = real.map((f) => f.ledger?.avgFidelity).filter((x) => typeof x === 'number');
   const stats = {
-    kept: kept.length,
+    kept: real.length,
     watchedMin: Math.round(mins * 10) / 10,
     avgFidelity: fids.length ? Math.round((fids.reduce((a, b) => a + b, 0) / fids.length) * 100) / 100 : null,
   };
@@ -50,6 +52,9 @@ app.post('/api/flicks', async (req, res) => {
   try {
     const { image, hints = {}, settings = {}, child } = req.body || {};
     if (!image || typeof image !== 'string') return res.status(400).json({ error: 'no drawing supplied' });
+    if (!/^data:image\//i.test(image) && !/^https?:\/\//i.test(image)) {
+      return res.status(400).json({ error: 'that isn\'t an image — send a photo of the drawing (data URL or link)' });
+    }
     const id = newId();
     const flick = {
       id, createdAt: Date.now(), status: 'draft', child: (child || 'You').slice(0, 40),

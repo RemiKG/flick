@@ -113,7 +113,7 @@ export async function runFlick(flick, { onComplete } = {}) {
 
       let verdict = await crew.check_fidelity({ flick, sheet, shot, frameFile }, ctx);
       shot.fidelity = verdict.fidelity;
-      emit({ stage: 'critic', shot: shot.shot_no, fidelity: verdict.fidelity, smoothed: verdict.smoothed });
+      emit({ stage: 'critic', shot: shot.shot_no, fidelity: verdict.fidelity, smoothed: verdict.smoothed, engine: verdict.engine });
       await tick();
       await pace();
 
@@ -133,7 +133,7 @@ export async function runFlick(flick, { onComplete } = {}) {
       shot.engine = cam.engine; shot.preview = cam.preview; shot.status = 'done';
       shot.held = verdict.held;
       cameraOut.push({ shot: shot.shot_no, videoUrl: cam.videoUrl, preview: cam.preview, engine: cam.engine });
-      emit({ stage: 'camera', shot: shot.shot_no, status: 'done', fidelity: shot.fidelity });
+      emit({ stage: 'camera', shot: shot.shot_no, status: 'done', fidelity: shot.fidelity, engine: cam.engine, preview: cam.preview });
       await tick();
     }
     flick.camera = cameraOut;

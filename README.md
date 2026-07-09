@@ -47,7 +47,7 @@ turns your kid's dragon into a stranger's.
 | 4 | The Set Painter | `paint_set` | `wan2.6-t2i` | paints the world **in the child's hand** |
 | 5 | The Camera | `roll_camera` | `wan2.7-r2v` | films each shot with **the drawing as `reference_image`** |
 | 6 | The Critic ⭐ | `check_fidelity` | `qwen3-vl-plus` | scores each shot's fidelity back to the drawing; re-draws **only** the one that drifts |
-| 7 | The Voice | `voice_line` | `cosyvoice-v3-plus` | warm storybook narration (+ optional cloned grandparent's voice) |
+| 7 | The Voice | `voice_line` | `qwen3-tts-flash` | warm storybook narration (+ optional cloned grandparent's voice) |
 | 8 | The Cutter | `cut_episode` | `ffmpeg` | deterministic assembly of shots + narration into the episode |
 
 All Qwen inference hits **`https://dashscope-intl.aliyuncs.com`** behind a single env var.

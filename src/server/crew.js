@@ -75,7 +75,8 @@ export async function read_drawing({ flick }, ctx = {}) {
 }
 
 // ───────────────────────────── 2 · The Writer ──────────────────────────────
-// qwen3.7-max (+preserve_thinking) writes the 5–6 beat arc in a read-aloud voice.
+// qwen3.7-max writes the 5–6 beat arc in a read-aloud voice. Thinking is off on
+// this interactive path — a stranger is watching the spinner.
 export async function write_story({ flick, sheet }, ctx = {}) {
   const mood = flick.settings?.mood || 'a bedtime story';
   if (engineLive()) {
@@ -88,7 +89,7 @@ Respond with STRICT JSON only:
       const { text } = await Q.chat({
         model: config.models.writer,
         messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],
-        extra: { temperature: 0.8, enable_thinking: true },
+        extra: { temperature: 0.8, enable_thinking: false },
       });
       const j = extractJSON(text);
       if (j?.beats?.length) {
@@ -115,7 +116,7 @@ Respond with STRICT JSON only: {"shots":[{"shot_no":1,"subject":"...","camera":"
       const { text } = await Q.chat({
         model: config.models.storyboarder,
         messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],
-        extra: { temperature: 0.6 },
+        extra: { temperature: 0.6, enable_thinking: false },
       });
       const j = extractJSON(text);
       const arr = Array.isArray(j) ? j : j?.shots;
@@ -144,8 +145,7 @@ export async function paint_set({ flick, sheet }, ctx = {}) {
   if (engineLive()) {
     try {
       const prompt = `A children's crayon-and-construction-paper background of ${sheet.place}, ${sheet.night ? 'night with stars and a moon' : 'daytime with a sun-with-a-face'}. Wobbly hand-drawn outlines, colour that goes past the lines, visible paper tooth. Palette: ${(sheet.palette || []).join(', ')}. No characters. Do not smooth — keep it drawn by a child.`;
-      const size = flick.settings?.aspect === '9:16' ? '720x1280' : flick.settings?.aspect === '1:1' ? '1024x1024' : '1280x720';
-      const { url } = await Q.images({ model: config.models.painter, prompt, size });
+      const { url } = await Q.images({ model: config.models.painter, prompt });
       if (url && /^https?:/.test(url)) {
         const { buffer } = await Q.downloadToBuffer(url);
         const setUrl = await store.saveMedia(flick.id, 'set.png', buffer);
@@ -157,25 +157,38 @@ export async function paint_set({ flick, sheet }, ctx = {}) {
 }
 
 // ───────────────────────────── 5 · The Camera ──────────────────────────────
-// wan2.7-r2v — the child's drawing is the reference_image, so the motion keeps
-// the exact hand-drawn look. Offline: no video; the shot is animated live in the
-// browser (labelled a local preview), never a fake MP4.
+// wan2.7-r2v — the child's drawing rides along as a reference image in
+// input.media, so the motion keeps the exact hand-drawn look. If the primary
+// model's task fails (submit OR render), the fallback model gets a full try.
+// Offline: no video; the shot is animated live in the browser (labelled a
+// local preview), never a fake MP4.
 export async function roll_camera({ flick, sheet, shot, subSeed = 0 }, ctx = {}) {
   const aspect = flick.settings?.aspect || '9:16';
   const ratio = aspect;
+  // Hosts with hard request-duration caps (the hosted mirror) set FLICK_DISABLE_WAN=1:
+  // a multi-minute render would be killed mid-run there, so the shot is animated
+  // in the browser instead — labelled a local preview, never passed off as wan.
+  if (process.env.FLICK_DISABLE_WAN === '1') {
+    ctx.log?.('camera: wan renders are off on this host — shot plays as a local preview');
+    return { videoUrl: null, seconds: shot.duration_s, engine: 'local', preview: true };
+  }
   if (engineLive() && flick.source?.imageUrl) {
-    try {
-      const input = { prompt: shot.wan_prompt, reference_image: flick.source.imageUrl };
-      const parameters = { resolution: '720P', ratio, watermark: false, prompt_extend: false, seed: (flick.seed + shot.shot_no + subSeed) % 2147483647, duration: shot.duration_s };
-      let model = config.models.camera;
-      let taskId;
-      try { ({ taskId } = await Q.submitVideoTask({ model, input, parameters })); }
-      catch (e) { model = config.models.cameraFallback; ({ taskId } = await Q.submitVideoTask({ model, input, parameters })); ctx.log?.(`camera used fallback ${model}`); }
-      const t = await Q.pollVideo(taskId, { onTick: (st) => ctx.emit?.({ stage: 'camera', shot: shot.shot_no, status: 'rolling', task: st }) });
-      const { buffer } = await Q.downloadToBuffer(t.videoUrl);
-      const videoUrl = await store.saveMedia(flick.id, `shot${shot.shot_no}.mp4`, buffer);
-      return { videoUrl, seconds: shot.duration_s, engine: model, preview: false };
-    } catch (e) { ctx.log?.(`camera fell back to local preview: ${e.message}`); }
+    const input = {
+      prompt: `Image 1 is the child's own drawing of the character. ${shot.wan_prompt}`,
+      media: [{ type: 'reference_image', url: flick.source.imageUrl }],
+    };
+    const parameters = { resolution: '720P', ratio, watermark: false, prompt_extend: false, seed: (flick.seed + shot.shot_no + subSeed) % 2147483647, duration: Math.round(shot.duration_s) };
+    for (const model of [config.models.camera, config.models.cameraFallback]) {
+      try {
+        const { taskId } = await Q.submitVideoTask({ model, input, parameters });
+        const t = await Q.pollVideo(taskId, { onTick: (st) => ctx.emit?.({ stage: 'camera', shot: shot.shot_no, status: 'rolling', task: st }) });
+        const { buffer } = await Q.downloadToBuffer(t.videoUrl);
+        const videoUrl = await store.saveMedia(flick.id, `shot${shot.shot_no}.mp4`, buffer);
+        if (model !== config.models.camera) ctx.log?.(`camera used fallback ${model}`);
+        return { videoUrl, seconds: shot.duration_s, engine: model, preview: false };
+      } catch (e) { ctx.log?.(`camera (${model}) failed: ${e.message}`); }
+    }
+    ctx.log?.('camera fell back to local preview');
   }
   return { videoUrl: null, seconds: shot.duration_s, engine: 'local', preview: true };
 }
@@ -211,21 +224,25 @@ export async function check_fidelity({ flick, sheet, shot, frameFile }, ctx = {}
 }
 
 // ───────────────────────────── 7 · The Voice ───────────────────────────────
-// cosyvoice / qwen3-tts narrates the beats. Offline: the browser reads it aloud
+// qwen3-tts narrates the beats. Offline: the browser reads it aloud
 // (Web Speech) — labelled, no fake audio file.
 export async function voice_line({ flick, story }, ctx = {}) {
   const setting = flick.settings?.voice || 'storybook';
   if (setting === 'off') return { audioUrl: null, engine: 'off' };
   if (engineLive()) {
-    try {
-      const text = (story.narration || '').slice(0, 590);
-      const { url } = await Q.tts({ model: config.models.voice, text, voice: 'Cherry' });
-      if (url && /^https?:/.test(url)) {
-        const { buffer } = await Q.downloadToBuffer(url);
-        const audioUrl = await store.saveMedia(flick.id, 'narration.mp3', buffer);
-        return { audioUrl, engine: config.models.voice };
-      }
-    } catch (e) { ctx.log?.(`voice fell back to browser narration: ${e.message}`); }
+    const text = (story.narration || '').slice(0, 590);
+    for (const model of [config.models.voice, config.models.voiceFallback]) {
+      try {
+        const { url } = await Q.tts({ model, text, voice: 'Cherry' });
+        if (url && /^https?:/.test(url)) {
+          const { buffer } = await Q.downloadToBuffer(url);
+          const audioUrl = await store.saveMedia(flick.id, 'narration.mp3', buffer);
+          return { audioUrl, engine: model };
+        }
+        throw new Error('no audio url in reply');
+      } catch (e) { ctx.log?.(`voice (${model}) failed: ${e.message}`); }
+    }
+    ctx.log?.('voice fell back to browser narration');
   }
   return { audioUrl: null, engine: 'browser' };
 }

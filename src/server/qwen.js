@@ -2,10 +2,12 @@
 // dashscope-intl endpoints. No SDK, no hidden magic. Every call throws a clear
 // error on failure so the orchestrator can degrade honestly (never fake a result).
 //
-//   chat / vision / images  ->  {baseUrl}  (OpenAI-compatible, Bearer key)
-//   async video synthesis    ->  {nativeUrl}/services/aigc/video-generation/video-synthesis
+//   chat / vision             ->  {baseUrl}  (OpenAI-compatible, Bearer key)
+//   images (wan t2i)          ->  {nativeUrl}/services/aigc/image-generation/generation
 //                                  header X-DashScope-Async: enable -> task_id -> poll /tasks/{id}
-//   TTS                       ->  {nativeUrl}/services/aigc/... (cosyvoice / qwen3-tts)
+//   async video synthesis     ->  {nativeUrl}/services/aigc/video-generation/video-synthesis
+//                                  header X-DashScope-Async: enable -> task_id -> poll /tasks/{id}
+//   TTS (qwen3-tts)           ->  {nativeUrl}/services/aigc/multimodal-generation/generation
 import { config } from './config.js';
 
 class QwenError extends Error {
@@ -38,7 +40,7 @@ async function doFetch(url, opts, timeoutMs = 60000) {
 // ── OpenAI-compatible chat / vision ─────────────────────────────────────────
 // messages: standard OpenAI shape. For vision, content is an array with
 // {type:'image_url', image_url:{url:<dataURL|http>}} + {type:'text', text}.
-export async function chat({ model, messages, extra = {}, timeoutMs = 90000 }) {
+export async function chat({ model, messages, extra = {}, timeoutMs = 150000 }) {
   const body = { model, messages, ...extra };
   const json = await doFetch(`${config.baseUrl}/chat/completions`, {
     method: 'POST', headers: authHeaders(), body: JSON.stringify(body),
@@ -48,7 +50,7 @@ export async function chat({ model, messages, extra = {}, timeoutMs = 90000 }) {
 }
 
 // convenience: ask a vision model about one image, get text back
-export async function visionAsk({ model, imageUrl, prompt, extra = {}, timeoutMs = 90000 }) {
+export async function visionAsk({ model, imageUrl, prompt, extra = {}, timeoutMs = 150000 }) {
   return chat({
     model,
     messages: [{
@@ -62,14 +64,34 @@ export async function visionAsk({ model, imageUrl, prompt, extra = {}, timeoutMs
   });
 }
 
-// ── Images (OpenAI-compatible images.generate) ──────────────────────────────
-export async function images({ model, prompt, size = '1024x1024', n = 1, extra = {}, timeoutMs = 120000 }) {
-  const body = { model, prompt, size, n, ...extra };
-  const json = await doFetch(`${config.baseUrl}/images/generations`, {
-    method: 'POST', headers: authHeaders(), body: JSON.stringify(body),
-  }, timeoutMs);
-  const url = json?.data?.[0]?.url || json?.data?.[0]?.b64_json || null;
-  return { url, raw: json };
+// ── Images (Wan t2i — native async endpoint; task_id -> poll /tasks/{id}) ────
+// The OpenAI-style /images/generations route does not exist on dashscope-intl,
+// so we speak the documented native shape: input.messages -> choices[].message.content[].image
+export async function images({ model, prompt, extra = {}, timeoutMs = 180000 }) {
+  const body = {
+    model,
+    input: { messages: [{ role: 'user', content: [{ text: prompt }] }] },
+    parameters: { n: 1, watermark: false, prompt_extend: false, ...extra },
+  };
+  const json = await doFetch(`${config.nativeUrl}/services/aigc/image-generation/generation`, {
+    method: 'POST', headers: authHeaders({ 'X-DashScope-Async': 'enable' }), body: JSON.stringify(body),
+  }, 60000);
+  const taskId = json?.output?.task_id;
+  if (!taskId) throw new QwenError('No task_id returned from image-generation', 200, json);
+  const start = Date.now();
+  for (;;) {
+    const t = await getTask(taskId);
+    if (t.status === 'SUCCEEDED') {
+      const content = t.output?.choices?.[0]?.message?.content || [];
+      const url = content.find((c) => c && c.image)?.image || null;
+      return { url, raw: t.raw };
+    }
+    if (t.status === 'FAILED' || t.status === 'CANCELED' || t.status === 'UNKNOWN') {
+      throw new QwenError(`Image task ${t.status}`, 200, t.raw);
+    }
+    if (Date.now() - start > timeoutMs) throw new QwenError('Image task timed out', 0, t.raw);
+    await new Promise((r) => setTimeout(r, 3000));
+  }
 }
 
 // ── Async video synthesis (Wan / HappyHorse) ────────────────────────────────
@@ -112,14 +134,12 @@ export async function pollVideo(taskId, { onTick, intervalMs = 6000, timeoutMs =
 }
 
 // ── TTS (narration) ─────────────────────────────────────────────────────────
-// qwen3-tts-flash: multimodal-generation/generation, {input:{text, voice}} -> audio url
-// cosyvoice-v3-plus: text2audio/generation (SSML) -> audio url
+// qwen3-tts-flash: multimodal-generation/generation, {input:{text, voice, language_type}}
+// -> output.audio.url (valid ~24h; the caller downloads a durable copy).
 export async function tts({ model, text, voice = 'Cherry', extra = {}, timeoutMs = 60000 }) {
-  const isCosy = /cosyvoice/i.test(model);
-  const path = isCosy ? 'services/aigc/text2audio/generation' : 'services/aigc/multimodal-generation/generation';
-  const input = isCosy ? { text, voice, ...extra } : { text, voice, ...extra };
-  const json = await doFetch(`${config.nativeUrl}/${path}`, {
-    method: 'POST', headers: authHeaders(), body: JSON.stringify({ model, input, parameters: {} }),
+  const input = { text, voice, language_type: 'Auto', ...extra };
+  const json = await doFetch(`${config.nativeUrl}/services/aigc/multimodal-generation/generation`, {
+    method: 'POST', headers: authHeaders(), body: JSON.stringify({ model, input }),
   }, timeoutMs);
   const url = json?.output?.audio?.url || json?.output?.audio_url || json?.output?.url || null;
   return { url, raw: json };

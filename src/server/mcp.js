@@ -24,7 +24,7 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: { image: { type: 'string' }, shot: { type: 'object' } }, required: ['shot'] } },
   { name: 'check_fidelity', description: 'The Critic (qwen3-vl): score a shot\'s fidelity back to the drawing (0..1).',
     inputSchema: { type: 'object', properties: { image: { type: 'string' }, shot: { type: 'object' } }, required: ['shot'] } },
-  { name: 'voice_line', description: 'The Voice (cosyvoice/qwen3-tts): narrate the story in a warm storybook voice.',
+  { name: 'voice_line', description: 'The Voice (qwen3-tts): narrate the story in a warm storybook voice.',
     inputSchema: { type: 'object', properties: { story: { type: 'object' } }, required: ['story'] } },
   { name: 'cut_episode', description: 'The Cutter (ffmpeg): assemble the shots + narration into the episode.',
     inputSchema: { type: 'object', properties: { story: { type: 'object' }, shots: { type: 'array' } }, required: ['story'] } },
@@ -34,10 +34,11 @@ const TOOLS = [
 
 function tmpFlick(image, extra = {}) {
   const id = newId();
+  const shots = Math.max(3, Math.min(6, Number(extra.shots) || 5));
   return {
     id, createdAt: Date.now(), status: 'draft', seed: hashSeed(String(image).slice(0, 200) + id),
     source: { kind: 'upload', imageUrl: image, hints: {} },
-    settings: { mood: extra.mood || 'a bedtime story', shots: 5, seconds: 47, threshold: 0.8, onDrift: 'again', voice: 'storybook', aspect: '9:16' },
+    settings: { mood: extra.mood || 'a bedtime story', shots, seconds: 47, threshold: 0.8, onDrift: 'again', voice: 'storybook', aspect: '9:16' },
     child: extra.child || 'You',
   };
 }
@@ -47,13 +48,14 @@ async function callTool(name, args) {
   switch (name) {
     case 'read_drawing': return crew.read_drawing({ flick: tmpFlick(a.image) });
     case 'write_story': return crew.write_story({ flick: tmpFlick('', { mood: a.mood }), sheet: a.sheet || { hero: 'the drawing', place: 'a green hill' } });
-    case 'storyboard': return crew.storyboard({ flick: tmpFlick('', { mood: a.mood }), sheet: a.sheet || {}, story: a.story });
+    case 'storyboard': return crew.storyboard({ flick: tmpFlick('', { mood: a.mood, shots: a.shots }), sheet: a.sheet || {}, story: a.story });
     case 'paint_set': return crew.paint_set({ flick: tmpFlick(a.image || ''), sheet: a.sheet || {} });
     case 'roll_camera': return crew.roll_camera({ flick: tmpFlick(a.image || ''), sheet: a.sheet || {}, shot: a.shot });
     case 'check_fidelity': return crew.check_fidelity({ flick: tmpFlick(a.image || ''), sheet: a.sheet || {}, shot: a.shot });
     case 'voice_line': return crew.voice_line({ flick: tmpFlick('', { }), story: a.story });
     case 'cut_episode': return crew.cut_episode({ flick: tmpFlick(''), story: a.story, shots: a.shots || [], camera: [], voice: {} });
     case 'make_flick': {
+      if (!/^data:image\//i.test(String(a.image || '')) && !/^https?:\/\//i.test(String(a.image || ''))) throw new Error('image must be a data: URL or an http(s) link to the drawing');
       const flick = tmpFlick(a.image, { child: a.child, mood: a.mood });
       await store.saveFlick(flick);
       runFlick(flick).catch(() => {}); // fire-and-forget; the URL streams progress

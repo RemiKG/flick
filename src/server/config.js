@@ -21,8 +21,8 @@ export const config = {
     camera: env.MODEL_CAMERA || 'wan2.7-r2v',
     cameraFallback: env.MODEL_CAMERA_FALLBACK || 'happyhorse-1.1-r2v',
     critic: env.MODEL_CRITIC || 'qwen3-vl-plus',
-    voice: env.MODEL_VOICE || 'cosyvoice-v3-plus',
-    voiceFallback: env.MODEL_VOICE_FALLBACK || 'qwen3-tts-flash',
+    voice: env.MODEL_VOICE || 'qwen3-tts-flash',
+    voiceFallback: env.MODEL_VOICE_FALLBACK || 'qwen3-tts-instruct-flash',
   },
 
   // Free-tier Wan seconds per model (the track's budget, made a feature).
@@ -38,7 +38,11 @@ export const config = {
 
   // Where the backend actually runs — drives the honest readout label.
   // Deploy on Alibaba Cloud ECS/SAS sets DEPLOY_LABEL="on Alibaba Cloud".
-  deployLabel: env.DEPLOY_LABEL || (env.ECS_INSTANCE_ID || env.ALIBABA_CLOUD_REGION ? 'on Alibaba Cloud' : 'running locally'),
+  deployLabel: env.DEPLOY_LABEL || (env.ECS_INSTANCE_ID || env.ALIBABA_CLOUD_REGION ? 'on Alibaba Cloud'
+    : env.VERCEL ? 'on a hosted mirror' : 'running locally'),
+
+  // On an ephemeral host (Vercel), point strangers at the persistent deployment.
+  primaryUrl: (env.FLICK_PRIMARY_URL || '').trim(),
 };
 
 export const engineLive = () => config.apiKey.length > 0;
@@ -49,6 +53,8 @@ export function publicConfig() {
     engineLive: engineLive(),
     deployLabel: config.deployLabel,
     onAlibaba: /alibaba/i.test(config.deployLabel),
+    ephemeral: !!process.env.VERCEL,
+    primaryUrl: config.primaryUrl,
     wanFreeSeconds: config.wanFreeSeconds,
     baseUrl: config.baseUrl,
     models: config.models,

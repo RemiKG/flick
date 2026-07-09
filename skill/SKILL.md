@@ -21,7 +21,7 @@ models:
   set_painter: wan2.6-t2i
   camera: wan2.7-r2v
   critic: qwen3-vl-plus
-  voice: cosyvoice-v3-plus
+  voice: qwen3-tts-flash
   voice_clone: qwen-voice-enrollment
 ---
 
@@ -41,7 +41,7 @@ stops looking like the actual drawing — so **fidelity is the load-bearing core
 | `paint_set` | `wan2.6-t2i` | paints the world in the child's hand |
 | `roll_camera` | `wan2.7-r2v` | films each shot with **the drawing as the `reference_image`** |
 | `check_fidelity` | `qwen3-vl-plus` | scores each shot's fidelity back to the drawing (0–1) and flags the one to re-draw |
-| `voice_line` | `cosyvoice-v3-plus` | warm storybook narration (optionally a cloned grandparent's voice) |
+| `voice_line` | `qwen3-tts-flash` | warm storybook narration (optionally a cloned grandparent's voice) |
 | `cut_episode` | `ffmpeg` | assembles the shots + narration into the ~50s episode |
 
 ## How to run it
