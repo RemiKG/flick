@@ -19,9 +19,12 @@
   ];
   const MODEL = {};
   function modelFor(id) { const c = (F.config && F.config.models) || {}; return { reader: c.reader, writer: c.writer, board: c.storyboarder, painter: c.painter, camera: c.camera, critic: c.critic, voice: c.voice, cutter: 'ffmpeg' }[id] || ''; }
+  // the movie-window badge: honest at every moment (updated live as stages land)
+  function badge() { return F._badge || (F.config && F.config.engineLive ? 'qwen crew · live' : 'local preview'); }
 
   async function render(view) {
     const id = F.currentRun || F.paramId();
+    F._badge = null; // fresh run, fresh honest badge
     const el = document.createElement('div');
     el.className = 'screen scr-backstage';
     if (!id) {
@@ -44,9 +47,9 @@
             <div class="h2">Backstage — watch the crew make it</div>
             <div class="status" id="status"><span class="golddot"></span>warming up…</div>
           </div>
-          <div class="lead" style="font-size:17px;margin-top:4px;color:var(--ink-55)">The pipeline <b class="em">is</b> the screen. Every step is a real ${F.config && F.config.engineLive ? 'Qwen Cloud call' : 'call — offline preview until a Qwen key is added'}.</div>
+          <div class="lead" style="font-size:17px;margin-top:4px;color:var(--ink-55)">The pipeline <b class="em">is</b> the screen. ${F.config && F.config.engineLive ? 'Every step tries the real Qwen Cloud call — any step that can\'t land falls back to an honest local pass, labelled below.' : 'Every step is a real call — offline preview until a Qwen key is added.'}</div>
           <div class="window stage-win" id="win">
-            <div class="badge-post" id="rendering" style="left:auto;right:10px">${F.config && F.config.engineLive ? 'rendering · wan2.7-r2v · 720P' : 'local preview'}</div>
+            <div class="badge-post" id="rendering" style="left:auto;right:10px">${badge()}</div>
             <div class="cap"><span class="line" id="cap">reading the drawing…</span></div>
           </div>
           <div class="metric">
@@ -90,6 +93,11 @@
     let shots = (flick && flick.shots) || [];
     let done = false;
 
+    // honest labels: a stage that fell back is marked local, never dressed as Qwen
+    const okLabel = (engine, localTxt) => (engine === 'local' || engine === 'browser') ? localTxt : '✓ done';
+    let camLocal = false, criticLocal = false;
+    const setBadge = (txt) => el.querySelectorAll('.badge-post').forEach((b) => { b.textContent = txt; });
+
     const es = F.API.stream(id, (e) => {
       switch (e.stage) {
         case 'reader': set('reader', e.status === 'done' ? 'done' : 'run', e.status === 'done' ? '✓ done' : 'reading…');
@@ -98,21 +106,24 @@
           if (e.status === 'done') { flick.story = e.story; cap(el, `“${e.title}” — laying the storyboard…`); } break;
         case 'board': set('board', e.status === 'done' ? 'done' : 'run', e.status === 'done' ? '✓ done' : 'boarding…');
           if (e.status === 'done') { shots = e.shots; flick.shots = shots; renderStrip(strip, shots, flick); } break;
-        case 'painter': set('painter', e.status === 'done' ? 'done' : 'run', e.status === 'done' ? '✓ done' : 'painting…'); break;
+        case 'painter': set('painter', e.status === 'done' ? 'done' : 'run', e.status === 'done' ? okLabel(e.engine, '✓ local set') : 'painting…'); break;
         case 'camera':
-          if (e.status === 'rolling') { set('camera', 'run', 'rolling…'); status.innerHTML = `<span class="golddot"></span>filming · shot ${e.shot} of ${shots.length}`; markShot(strip, e.shot, 'rolling'); cap(el, `the Camera is rolling shot ${e.shot}.`); winShot(win, flick, e.shot); }
-          else if (e.status === 'done') { markShot(strip, e.shot, 'done', shotFid(shots, e.shot)); } break;
-        case 'critic': set('critic', 'run', 'checking…'); setMeter(el, e.fidelity); markShotFid(shots, e.shot, e.fidelity); break;
+          if (e.status === 'rolling') { set('camera', 'run', 'rolling…'); status.innerHTML = `<span class="golddot"></span>filming · shot ${e.shot} of ${shots.length}`; markShot(strip, e.shot, 'rolling'); cap(el, `the Camera is rolling shot ${e.shot}.`); winShot(win, flick, e.shot); setBadge(e.model && e.model !== 'local preview' && !camLocal ? `rendering · ${e.model} · 720P` : badge()); }
+          else if (e.status === 'done') { if (e.engine === 'local') { camLocal = true; F._badge = 'local preview — no wan video landed'; setBadge(F._badge); } markShot(strip, e.shot, 'done', shotFid(shots, e.shot)); } break;
+        case 'critic': if (e.engine === 'local') { criticLocal = true; const ml = el.querySelector('.mlab'); if (ml) ml.textContent = 'fidelity — local palette heuristic (qwen critic offline)'; }
+          set('critic', 'run', e.engine === 'local' ? 'checking (local)…' : 'checking…'); setMeter(el, e.fidelity); markShotFid(shots, e.shot, e.fidelity); break;
         case 'redraw':
           if (e.status === 'running') { el.querySelector('#redrew').innerHTML = `shot ${e.shot} came back at <b class="lo">${(e.from||0).toFixed(2)}</b> — too smoothed → <b>drawing that one again…</b>`; markShot(strip, e.shot, 'redraw'); }
           else { el.querySelector('#redrew').innerHTML = `shot ${e.shot} came back at <b class="lo">${(e.from||0).toFixed(2)}</b> — too smoothed → <b>drew that one again</b> → ${(e.to||0).toFixed(2)}. We only re-draw the shot that drifts.`; setMeter(el, e.to); } break;
-        case 'voice': set('voice', e.status === 'done' ? 'done' : 'run', e.status === 'done' ? '✓ done' : 'voicing…'); break;
-        case 'cutter': set('cutter', e.status === 'done' ? 'done' : 'run', e.status === 'done' ? '✓ done' : 'cutting…');
-          if (e.status === 'done') { set('camera', 'done', '✓ done'); set('critic', 'done', '✓ done'); } break;
+        case 'voice': set('voice', e.status === 'done' ? 'done' : 'run', e.status === 'done' ? okLabel(e.engine, '✓ browser voice') : 'voicing…'); break;
+        case 'cutter': set('cutter', e.status === 'done' ? 'done' : 'run', e.status === 'done' ? (e.engine === 'browser' ? '✓ in-browser cut' : '✓ done') : 'cutting…');
+          if (e.status === 'done') { set('camera', 'done', camLocal ? '✓ local preview' : '✓ done'); set('critic', 'done', criticLocal ? '✓ local check' : '✓ done'); } break;
         case 'ledger': if (e.ledger && typeof e.ledger.avgFidelity === 'number') setMeter(el, e.ledger.avgFidelity, true); break;
         case 'complete':
           done = true; flick = e.flick; status.innerHTML = `<span class="golddot"></span>done · it's alive`;
           cap(el, 'ready — step it off the fridge.');
+          // keep a session copy so the watch page survives an ephemeral host
+          try { sessionStorage.setItem('flick.last.' + flick.id, JSON.stringify(flick)); } catch {}
           showComplete(el, flick); es.close(); break;
         case 'error': status.innerHTML = `<span class="pendot"></span>` + (e.message || 'something wobbled'); es.close(); break;
       }
@@ -124,13 +135,13 @@
     Movie.mountWindow(win, flick, { w: 830, h: 390, playing: false, allowVideo: false, spark: !!(flick.render && flick.render.night) });
     if (capLine) cap({ querySelector: (s) => win.querySelector(s) }, capLine, win);
     // re-add badge + cap holders
-    if (!win.querySelector('.badge-post')) win.insertAdjacentHTML('beforeend', `<div class="badge-post" style="left:auto;right:10px">${F.config && F.config.engineLive ? 'rendering · wan2.7-r2v · 720P' : 'local preview'}</div>`);
+    if (!win.querySelector('.badge-post')) win.insertAdjacentHTML('beforeend', `<div class="badge-post" style="left:auto;right:10px">${badge()}</div>`);
     if (!win.querySelector('.cap')) win.insertAdjacentHTML('beforeend', `<div class="cap"><span class="line" id="cap">${capLine || ''}</span></div>`);
   }
   function winShot(win, flick, shotNo) {
     // render the scene for this shot (night per flick), playing to read as alive
     Movie.mountWindow(win, flick, { w: 830, h: 390, playing: true, allowVideo: false });
-    win.insertAdjacentHTML('beforeend', `<div class="badge-post" style="left:auto;right:10px">${F.config && F.config.engineLive ? 'rendering · wan2.7-r2v · 720P' : 'local preview'}</div>`);
+    win.insertAdjacentHTML('beforeend', `<div class="badge-post" style="left:auto;right:10px">${badge()}</div>`);
     win.insertAdjacentHTML('beforeend', `<div class="cap"><span class="line" id="cap">the Camera is rolling shot ${shotNo}.</span></div>`);
   }
   function cap(el, text, winEl) { const c = (winEl || document).querySelector ? (winEl ? winEl.querySelector('#cap') : el.querySelector('#cap')) : null; if (c) c.textContent = text; }

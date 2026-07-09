@@ -12,7 +12,16 @@
     const id = F.paramId();
     let flick;
     try { flick = await F.API.getFlick(id); } catch { }
-    if (!flick) { view.innerHTML = `<div class="screen"><div class="h2">That flick isn't here.</div><div class="lead" style="margin-top:8px"><span class="em" style="cursor:pointer" data-go="/toybox">Open the toy box →</span></div></div>`; view.querySelector('[data-go]').onclick = () => F.go('/toybox'); return; }
+    // ephemeral host (hosted mirror): the server copy may be gone — fall back to
+    // the session copy saved when the run completed, so YOUR flick still plays.
+    if (!flick) { try { flick = JSON.parse(sessionStorage.getItem('flick.last.' + id) || 'null'); } catch { } }
+    if (!flick) {
+      const cfg = F.config || {};
+      const mirror = cfg.ephemeral && cfg.primaryUrl
+        ? `<div class="lead" style="margin-top:10px;max-width:620px">This hosted mirror keeps flicks only for the session that made them. The persistent toy box runs on the Alibaba Cloud deployment: <a class="em" href="${cfg.primaryUrl}" target="_blank" rel="noopener">${cfg.primaryUrl.replace(/^https?:\/\//,'')}</a></div>` : '';
+      view.innerHTML = `<div class="screen"><div class="h2">That flick isn't here.</div>${mirror}<div class="lead" style="margin-top:8px"><span class="em" style="cursor:pointer" data-go="/toybox">Open the toy box →</span></div></div>`;
+      view.querySelector('[data-go]').onclick = () => F.go('/toybox'); return;
+    }
 
     const el = document.createElement('div');
     el.className = 'screen scr-watch';
@@ -42,7 +51,7 @@
     sub.innerHTML = `
       <div class="sa-head">
         <div class="h1" style="font-size:clamp(24px,3.4vw,34px)">It moves. It talks. It's still theirs.</div>
-        <div class="badge">● live · fidelity ${fid ? fid.toFixed(2) : '—'} · same ${charName(flick)}</div>
+        <div class="badge">● ${flick.mode === 'qwen' ? 'live' : 'local preview'} · fidelity ${fid ? fid.toFixed(2) : '—'} · same ${charName(flick)}</div>
       </div>
       <div class="narr">the same wonky drawing — <b>still</b>, and then <b>alive</b>. ${sig2(flick)}</div>
       <div class="sa-row">

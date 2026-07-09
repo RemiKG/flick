@@ -58,8 +58,8 @@
 
   function card(f, example) {
     const seedChar = (f.id.charCodeAt(f.id.length - 1) % 20);
-    const tag = example
-      ? `<span class="series pencil">example</span>`
+    const tag = (example || f.example_seed)
+      ? `<span class="series pencil">example</span>${f.series ? `<span class="series">episode ${f.series.episode}</span>` : ''}`
       : (f.series ? `<span class="series">episode ${f.series.episode}</span>` : '');
     const meta = `${(f.meta && f.meta.seconds) || f.settings.seconds}s${f.meta && f.meta.day ? ' · ' + f.meta.day : ''}`;
     const fid = f.ledger && typeof f.ledger.avgFidelity === 'number' ? f.ledger.avgFidelity.toFixed(2) : '—';

@@ -59,9 +59,24 @@
       if (!/^image\//.test(f.type)) { F.toast('That doesn\'t look like an image — try a photo of a drawing.'); return; }
       const reader = new FileReader();
       reader.onload = () => {
-        const dataUrl = reader.result;
         const img = new Image();
         img.onload = () => {
+          // big phone photos get downscaled right here in the browser — hosted
+          // request bodies cap out ~4.5MB, and the crew never needs more pixels
+          let dataUrl = reader.result;
+          const maxDim = Math.max(img.naturalWidth, img.naturalHeight) || 1;
+          if (maxDim > 1600 || dataUrl.length > 2500000) {
+            try {
+              const scale = Math.min(1, 1600 / maxDim);
+              const cv = document.createElement('canvas');
+              cv.width = Math.max(1, Math.round(img.naturalWidth * scale));
+              cv.height = Math.max(1, Math.round(img.naturalHeight * scale));
+              const cx = cv.getContext('2d');
+              cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cv.width, cv.height);
+              cx.drawImage(img, 0, 0, cv.width, cv.height);
+              dataUrl = cv.toDataURL('image/jpeg', 0.85);
+            } catch { /* keep the original if the canvas balks */ }
+          }
           const hints = F.samplePalette(img);
           hints.char = 'photo';
           F._pending = { image: dataUrl, hints, title: (f.name || '').replace(/\.[^.]+$/, '').slice(0, 40) || 'my drawing' };
@@ -69,7 +84,7 @@
           drop.innerHTML = `<img class="preview" src="${dataUrl}" alt="your drawing"><div class="big" style="margin-top:12px">Pinned — ready to roll</div><div class="sub">press “Make a flick”, or tap to choose another</div>`;
           make.disabled = false;
         };
-        img.src = dataUrl;
+        img.src = reader.result;
       };
       reader.readAsDataURL(f);
     }

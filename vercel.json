@@ -4,7 +4,7 @@
     {
       "src": "src/server/index.js",
       "use": "@vercel/node",
-      "config": { "includeFiles": ["public/**"] }
+      "config": { "includeFiles": ["public/**"], "maxDuration": 300 }
     }
   ],
   "routes": [

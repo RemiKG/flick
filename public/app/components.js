@@ -73,7 +73,11 @@
 
   F.footer = function () {
     const d = document.createElement('div'); d.className = 'foot-line';
-    d.innerHTML = 'running on ' + ((F.config && F.config.deployLabel) || 'Node') + ' · Qwen Cloud · wan2.7-r2v · MIT open source · <span class="em" style="cursor:pointer" data-go="/edges">what we won\'t fake →</span>';
+    const cfg = F.config || {};
+    const mirror = cfg.ephemeral && cfg.primaryUrl
+      ? ` · hosted mirror (flicks last one session) — <a class="em" href="${cfg.primaryUrl}" target="_blank" rel="noopener" style="color:inherit">persistent toy box lives here →</a>`
+      : '';
+    d.innerHTML = 'running on ' + (cfg.deployLabel || 'Node') + ' · Qwen Cloud · wan2.7-r2v · MIT open source' + mirror + ' · <span class="em" style="cursor:pointer" data-go="/edges">what we won\'t fake →</span>';
     d.querySelector('[data-go]').addEventListener('click', () => F.go('/edges'));
     return d;
   };
