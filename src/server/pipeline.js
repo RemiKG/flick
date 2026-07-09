@@ -7,6 +7,13 @@ import * as store from './store.js';
 import * as FF from './ffmpeg.js';
 import { round2 } from './util.js';
 
+// Optional demo cadence. Default 0 => stages stream as fast as they land (the
+// shipped/deployed default; the offline preview is near-instant, real Qwen is
+// naturally slow). Set FLICK_DEMO_PACING_MS to space the reveal so a human eye
+// can follow the crew light up — it only *delays* real stages, never fakes one.
+const PACE = Math.max(0, Number(process.env.FLICK_DEMO_PACING_MS) || 0);
+const pace = (mult = 1) => PACE ? new Promise((r) => setTimeout(r, PACE * mult)) : Promise.resolve();
+
 // in-memory bus so the SSE route can subscribe to a running job
 const buses = new Map();
 export function subscribe(id, fn) {
@@ -60,6 +67,7 @@ export async function runFlick(flick, { onComplete } = {}) {
   try {
     // 1 · Reader
     emit({ stage: 'reader', status: 'running' });
+    await pace();
     const sheet = await crew.read_drawing({ flick }, ctx);
     flick.drawingSheet = sheet;
     flick.mode = sheet.engine === 'local' ? 'offline' : 'qwen';
@@ -68,6 +76,7 @@ export async function runFlick(flick, { onComplete } = {}) {
 
     // 2 · Writer
     emit({ stage: 'writer', status: 'running' });
+    await pace();
     const story = await crew.write_story({ flick, sheet }, ctx);
     flick.story = story;
     emit({ stage: 'writer', status: 'done', title: story.title, story });
@@ -75,6 +84,7 @@ export async function runFlick(flick, { onComplete } = {}) {
 
     // 3 · Storyboarder
     emit({ stage: 'board', status: 'running' });
+    await pace();
     const { shots, engine: sbEngine } = await crew.storyboard({ flick, sheet, story }, ctx);
     flick.shots = shots.map((s) => ({ ...s, status: 'queued', fidelity: null, redraws: 0, night: sheet.night }));
     flick.storyboardEngine = sbEngine;
@@ -83,6 +93,7 @@ export async function runFlick(flick, { onComplete } = {}) {
 
     // 4 · Set Painter
     emit({ stage: 'painter', status: 'running' });
+    await pace();
     const set = await crew.paint_set({ flick, sheet }, ctx);
     flick.media = { ...(flick.media || {}), setUrl: set.setUrl };
     flick.setEngine = set.engine;
@@ -94,6 +105,7 @@ export async function runFlick(flick, { onComplete } = {}) {
     for (const shot of flick.shots) {
       shot.status = 'rolling';
       emit({ stage: 'camera', shot: shot.shot_no, status: 'rolling', model: flick.mode === 'qwen' ? crew.CREW[4].model : 'local preview' });
+      await pace();
 
       let cam = await crew.roll_camera({ flick, sheet, shot }, ctx);
       let frameFile = null;
@@ -103,11 +115,13 @@ export async function runFlick(flick, { onComplete } = {}) {
       shot.fidelity = verdict.fidelity;
       emit({ stage: 'critic', shot: shot.shot_no, fidelity: verdict.fidelity, smoothed: verdict.smoothed });
       await tick();
+      await pace();
 
       // the un-fakeable loop: re-draw ONLY the shot that drifts (never the episode)
       if (verdict.fidelity < threshold && flick.settings?.onDrift !== 'looser') {
         const from = verdict.fidelity;
         emit({ stage: 'redraw', shot: shot.shot_no, from, status: 'running' });
+        await pace(1.6);
         shot._redrawn = true; shot.redraws = (shot.redraws || 0) + 1;
         cam = await crew.roll_camera({ flick, sheet, shot, subSeed: 100 }, ctx);
         if (cam.videoUrl && !cam.preview) { frameFile = store.mediaPath(flick.id, `frame${shot.shot_no}.png`); await FF.extractFrame(store.mediaPath(flick.id, `shot${shot.shot_no}.mp4`), frameFile).catch(() => { frameFile = null; }); }
@@ -126,6 +140,7 @@ export async function runFlick(flick, { onComplete } = {}) {
 
     // 7 · Voice
     emit({ stage: 'voice', status: 'running' });
+    await pace();
     const voice = await crew.voice_line({ flick, story }, ctx);
     flick.media = { ...(flick.media || {}), audioUrl: voice.audioUrl };
     flick.voiceEngine = voice.engine;
@@ -134,6 +149,7 @@ export async function runFlick(flick, { onComplete } = {}) {
 
     // 8 · Cutter
     emit({ stage: 'cutter', status: 'running' });
+    await pace();
     const cut = await crew.cut_episode({ flick, story, shots: flick.shots, camera: cameraOut, voice }, ctx);
     flick.media = { ...(flick.media || {}), videoUrl: cut.videoUrl, thumbUrl: cut.thumbUrl };
     flick.edl = cut.edl; flick.cutEngine = cut.engine;
