@@ -143,7 +143,22 @@ app.post('/api/tools/:name', async (req, res) => {
 mountMCP(app);
 
 // ── static: media store, then the SPA ─────────────────────────────────────
-app.use('/media', express.static(store.MEDIA_DIR, { maxAge: '1h' }));
+// On a real-disk host the store lives on disk (served statically). On a Blob-backed
+// host (Vercel serverless) /tmp isn't shared across functions, so stream the durable
+// copy back out of Blob instead of 404-ing on a media file another lambda just wrote.
+if (store.USE_BLOB) {
+  app.get('/media/:id/:name', async (req, res) => {
+    try {
+      const m = await store.getMedia(req.params.id, req.params.name);
+      if (!m) return res.status(404).json({ error: 'not found' });
+      res.setHeader('Content-Type', m.contentType);
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.send(m.buffer);
+    } catch { return res.status(404).json({ error: 'not found' }); }
+  });
+} else {
+  app.use('/media', express.static(store.MEDIA_DIR, { maxAge: '1h' }));
+}
 app.use(express.static(PUBLIC, { extensions: ['html'] }));
 
 // SPA history fallback (client routes: /, /backstage, /toybox, /booth, /watch/:id, /edges)
